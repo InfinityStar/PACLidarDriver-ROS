@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 #include <fcntl.h>
 #include "Common.h"
 
@@ -15,10 +16,19 @@ public:
     lidarManager(std::string ip = "192.168.1.199", uint16_t port = 5000);
     ~lidarManager();
 
-    int connectLidar();
+    int connectLidar(uint32_t timeout_sec=0);
 
+    /*
+    * @desc:以储存的参数启动雷达电机以及数据通讯
+    * @return：成功 0 ，失败 -1
+    */
     int startupLidar();
 
+    /*
+    * @desc:指定参数启动雷达电机以及数据通讯，且修改储存的参数
+    * @params：雷达的转速以及雷达的数据类型
+    * @return：成功 0 ，失败 -1
+    */
     int startupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type);
 
     int stopLidar();

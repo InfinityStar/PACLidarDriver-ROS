@@ -11,6 +11,7 @@
 #include <vector>
 #include <assert.h>
 #include <cmath>
+#include <sys/time.h>
 
 #define PAC_NUM_OF_ONE_PKG  1020
 #define PAC_NUM_OF_ONE_SCAN 1000

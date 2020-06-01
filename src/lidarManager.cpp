@@ -1,5 +1,7 @@
 #include "lidarManager.h"
 
+#define BEAM_ACCURACY 2
+
 using namespace std;
 
 lidarManager::lidarManager(string ip, uint16_t port)
@@ -17,7 +19,7 @@ lidarManager::lidarManager(string ip, uint16_t port)
     lidarSockAddr->sin_port = htons(port);
 
     pthread_mutexattr_init(&mutexattr);
-    pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_FAST_NP);
+    pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK);
     pthread_mutex_init(&mutex, &mutexattr);
 }
 
@@ -25,16 +27,14 @@ lidarManager::~lidarManager()
 {
     pthread_mutex_destroy(&mutex);
 
-    if (dataReceiver)
-    {
-        isCap = false;
-        pthread_join(dataReceiver, NULL);
-    }
-
     if (lidarSockFD >= 0)
     {
         cout << "Close lidar" << endl;
         stopLidar();
+        if (pthread_kill(dataReceiver,0)==0)
+        {
+            pthread_join(dataReceiver, NULL);
+        }
         close(lidarSockFD);
     }
 
@@ -42,20 +42,41 @@ lidarManager::~lidarManager()
         delete lidarSockAddr;
 }
 
-int lidarManager::connectLidar()
+int lidarManager::connectLidar(uint32_t timeout_sec)
 {
-    // int flag = fcntl(lidarSockFD, F_GETFL);
-    // fcntl(lidarSockFD, F_SETFL, flag | O_NONBLOCK);
-    cout << "Connecting..." << endl;
-    int rtn = connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr));
-    // fcntl(lidarSockFD, F_SETFL, flag);
-    if (rtn < 0)
+    cout << "Connecting to lidar..." << endl;
+    bool foreverLoop = !timeout_sec;
+    if(connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr))==-1)
     {
-        cerr << "Error:connect to lidar failed:" << strerror(errno) << std::endl;
-        return -1;
+        cerr << "Connect to lidar failed :" << strerror(errno) << std::endl
+        <<"Retrying..."<<endl;
+        sleep(1);
+        int flag = fcntl(lidarSockFD, F_GETFL);
+        fcntl(lidarSockFD, F_SETFL, flag | O_NONBLOCK);
+        errno = 0;
+
+        while ( connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr))==-1 )
+        {
+            if (errno != EAGAIN && errno!=EINPROGRESS && errno!=EALREADY) 
+                cout << strerror(errno) << std::endl;
+            sleep(1);
+            if (!foreverLoop)
+            {
+                if (!(--timeout_sec))
+                {
+                    errno = ETIMEDOUT;
+                    fcntl(lidarSockFD, F_SETFL, flag);
+                    return -1;
+                }
+                else
+                    continue;
+            }
+        }
+        fcntl(lidarSockFD, F_SETFL, flag);
     }
-    cout << "Conect to lidar succed." << endl;
-    return rtn;
+
+    cout << "Conection is ready now." << endl;
+    return 0;
 }
 
 int lidarManager::reconnectLidar()
@@ -82,24 +103,34 @@ int lidarManager::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data
     isCap = true;
 
     pthread_create(&dataReceiver, NULL, dataRecvFunc, (void *)this);
-
+    while (pthread_kill(dataReceiver,0)!=0)
+    {
+        cout<<"Wait for receiver thread starting."<<endl;
+        msleep(1);
+    }
     return 0;
 }
 
 int lidarManager::stopLidar()
 {
+    isCap = false;
+    pthread_mutex_lock(&mutex);
     if (send_cmd_to_lidar(PacLidar::CTRL_STOP) < 0)
         return -1;
     else
         return 0;
+    pthread_mutex_unlock(&mutex);
 }
 
 int lidarManager::setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type)
 {
     lidarParam.speed = speed;
     lidarParam.dataType = data_type;
-    send_cmd_to_lidar(speed);
-    send_cmd_to_lidar(data_type);
+    if(send_cmd_to_lidar(speed)==-1 && send_cmd_to_lidar(data_type)==-1){
+        cerr<<"Setup lidar failed : "<<strerror(errno)<<endl;
+        return -1;
+    }
+    return 0;
 }
 
 int lidarManager::getLidarScanByBeam(float *ranges, float *intensities, unsigned start_beam, unsigned stop_beam)
@@ -111,25 +142,29 @@ int lidarManager::getLidarScanByBeam(float *ranges, float *intensities, unsigned
     memset(ranges,      0, (stop_beam + 1 - start_beam) * sizeof(float));
     memset(intensities, 0, (stop_beam + 1 - start_beam) * sizeof(float));
 
-    pthread_mutex_lock(&mutex);
-
-    float range = 0;
-    for (int i = start_beam; i <= stop_beam; ++i)
+    if (pthread_mutex_lock(&mutex) == 0)
     {
-        range = oneCircleData[i].part1 / 1000.0;
-        if (range)
+        float range = 0;
+        for (int i = start_beam; i <= stop_beam; ++i)
         {
-            ranges[i] = range;
-            intensities[i] = oneCircleData[i].part3;
+            range = oneCircleData[i].part1 / 1000.0;
+            if (range)
+            {
+                ranges[i] = range;
+                intensities[i] = oneCircleData[i].part3;
+            }
+            else
+            {
+                ranges[i] = INFINITY;
+                intensities[i] = 0;
+            }
         }
-        else
-        {
-            ranges[i] = INFINITY;
-            intensities[i] = 0;
-        }
-    }
 
-    pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&mutex);
+        return 0;
+    }
+    else
+        return -1;
 }
 
 
@@ -138,7 +173,7 @@ int lidarManager::getLidarScanByAngle(float *ranges, float *intensities, float s
     unsigned start_beam = start_angle/PAC_ANGLE_RESOLUTION;
     unsigned stop_beam = stop_angle/PAC_ANGLE_RESOLUTION;
     stop_beam-=1;
-    getLidarScanByBeam(ranges,intensities,start_beam,stop_beam);
+    return getLidarScanByBeam(ranges,intensities,start_beam,stop_beam);
 }
 
 
@@ -166,9 +201,12 @@ void lidarManager::capLidarData()
 {
     if (lidarSockFD < 0)
         return;
-    uint64_t dtCnt = 0;
     ssize_t recvedNum = 0;
     uint32_t buf_start_idx = 0;
+    pthread_mutex_trylock(&mutex);
+    PacLidar::LidarData_t data_remains[PAC_NUM_OF_ONE_SCAN];
+    bzero(data_remains,sizeof(data_remains));
+    size_t remain_size = 0;
     while (isCap)
     {
         size_t leftNum = sizeof(sockDataPkg);
@@ -176,7 +214,7 @@ void lidarManager::capLidarData()
         bool pkgHd = false, pkgTl = false;
         while (leftNum > 0)
         {
-            memset(index, 0, leftNum);
+            bzero(index, leftNum);
 
             recvedNum = recv(lidarSockFD, index, leftNum, 0);
             if (recvedNum > 0)
@@ -219,10 +257,9 @@ void lidarManager::capLidarData()
         }
         /***********************************/
 
-        /*************提取数据开始******************/
+        /*************提取数据-开始******************/
         if (pkgHd && pkgTl)
         {
-            dtCnt++;
             /*************提取雷达状态-开始**********************/
             lidarStatus.temprature = (sockDataPkg[PAC_IDX_OF_TMP].part1 << 8) + sockDataPkg[PAC_IDX_OF_TMP].part2;
             lidarStatus.id = (sockDataPkg[PAC_IDX_OF_ID].part1 << 8) + sockDataPkg[PAC_IDX_OF_ID].part2;
@@ -231,28 +268,82 @@ void lidarManager::capLidarData()
             /*************提取雷达状态-结束**********************/
 
             /*************提取扫描数据-开始**********************/
+            //拷贝至scan数组
             memcpy(scanDataPkg, sockDataPkg + 1, sizeof(scanDataPkg));
+
+            //初始化起始角度和结束角度寻找的标志位
+            static bool findHeaderData = false,dataAvalible = false;
             
-            for (auto &i : scanDataPkg)
-            {
-                if (i.part2 < PAC_MAX_BEAMS)
-                {
-                    oneCircleData[i.part2] = i;
+            //提取上次结余的数据
+            if(remain_size>0){
+                for(auto &i : data_remains){
+                    if(i.part2<PAC_MAX_BEAMS)
+                        oneCircleData[i.part2] = i;
                 }
+                findHeaderData = true;
+                remain_size = 0;
             }
 
-            if (dtCnt % 6 == 0)
+            //判断当前包中是否存在起始角度的数据
+            if(!findHeaderData){
+                if(scanDataPkg[0].part2!=0)
+                    if( (scanDataPkg[PAC_NUM_OF_ONE_SCAN-1].part2 - scanDataPkg[0].part2) > 0)
+                        continue;
+            }
+
+            //提取本次收到的数据
+            for(int i=0;i<PAC_NUM_OF_ONE_SCAN;i++){
+                PacLidar::LidarData_t datai = scanDataPkg[i];
+                if (datai.part2 < PAC_MAX_BEAMS)
+                {
+                    //寻找起始角度数据
+                    if (datai.part2 - 0 <= BEAM_ACCURACY)
+                        findHeaderData = true;
+                    //寻找结束角度数据
+                    if (findHeaderData)
+                    {
+                        oneCircleData[datai.part2] = datai;
+                        if (PAC_MAX_BEAMS - datai.part2 <= BEAM_ACCURACY)
+                        {
+                            if (i + 1 < PAC_NUM_OF_ONE_SCAN)
+                            {
+                                PacLidar::LidarData_t datanx = scanDataPkg[i + 1];
+                                if ((datanx.part2 < PAC_MAX_BEAMS) && (PAC_MAX_BEAMS - datanx.part2 <= BEAM_ACCURACY))
+                                    dataAvalible = false;
+                                else
+                                {
+                                    dataAvalible = true;
+                                    remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
+                                    bzero(data_remains,sizeof(data_remains));
+                                    memcpy(data_remains,scanDataPkg+i+1,remain_size);
+                                    break;
+                                }
+                            }
+                            //丢弃后面的数据(误差范围内)
+                            else
+                                dataAvalible = true;
+                        }
+                    }
+                }
+            }
+            //提取一周数据完毕，解锁
+            if (dataAvalible)
             {
                 pthread_mutex_unlock(&mutex);
                 // cout << "Got one full pkg." << endl;
-                dtCnt = 0;
-                sleep(1);
+                //给1us时间让主线程获得锁
+                usleep(1);
                 pthread_mutex_lock(&mutex);
-                memset(oneCircleData, 0, sizeof(oneCircleData));
+                bzero(oneCircleData, sizeof(oneCircleData));
+                //重置两个标志
+                dataAvalible = false;
+                findHeaderData = false;
             }
             /*************提取扫描数据-结束******************/
         }
+        /*************提取数据-结束******************/
     }
+    pthread_mutex_unlock(&mutex);
 }
 
 void lidarManager::msleep(uint32_t msec)
@@ -261,41 +352,5 @@ void lidarManager::msleep(uint32_t msec)
     {
         usleep(1000);
         msec--;
-    }
-}
-
-int32_t lidarManager::select_start_degree(PacLidar::LidarData_t *arr, size_t size)
-{
-    size = size / sizeof(PacLidar::LidarData_t);
-    assert(size <= PAC_MAX_BEAMS);
-    unsigned start = 0;
-    unsigned end = size - 1;
-    if (arr[0].part2 == 0)
-        return 0;
-    else
-    {
-        //判断是否有第起始角度的数据
-        int32_t difference = arr[end].part2 - arr[start].part2;
-        if (difference < 0)
-        {
-            //找到起始角度的数据
-            unsigned idx = PAC_MAX_BEAMS - arr[start].part2;
-            if (idx < size)
-            {
-                if (arr[idx].part2 == 0)
-                    return idx;
-                else
-                {
-                    for (int i = idx - arr[idx].part2; i < idx; i++)
-                        if (arr[i].part2 == 0)
-                            return i;
-                }
-            }
-            else
-                return -1;
-        }
-        //数组中不存在0度的数据
-        else
-            return -1;
     }
 }

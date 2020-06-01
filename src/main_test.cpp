@@ -1,6 +1,7 @@
 #include <iostream>
 #include <sys/signal.h>
 #include "lidarManager.h"
+#include <fcntl.h>
 
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
@@ -17,12 +18,12 @@ int main(int argc, char **argv)
 
     ros::init(argc,argv,"paclidar");
     ros::NodeHandle ros_nh;
-    ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>("scan",10);
-    ros::Rate rt(10);
+    ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>("scan",1);
+    // ros::Rate rt(10);
 
     lidarManager lm = lidarManager();
     lm.connectLidar();
-    lm.startupLidar();
+    lm.startupLidar(PacLidar::SET_SPEED_HZ_15,PacLidar::SET_DATA_ORIGINAL);
     float scanRans[PAC_MAX_BEAMS];
     float scanIntes[PAC_MAX_BEAMS];
 
@@ -40,13 +41,13 @@ int main(int argc, char **argv)
         scanData.ranges.assign(scanRans,scanRans+PAC_MAX_BEAMS);
         scanData.intensities.assign(scanIntes,scanIntes+PAC_MAX_BEAMS);
 
-        // scanData.scan_time = endTM - startTM;
-        scanData.scan_time = 0.1;
+        scanData.scan_time = endTM - startTM;
         scanData.time_increment = scanData.scan_time / (PAC_MAX_BEAMS-1);
         
         scanPub.publish(scanData);
         ROS_INFO("Published.Spent %f.",scanData.scan_time);
-        // rt.sleep();
+        bzero(scanRans,PAC_MAX_BEAMS);
+        bzero(scanIntes,PAC_MAX_BEAMS);
     }
     return 0;
 }
