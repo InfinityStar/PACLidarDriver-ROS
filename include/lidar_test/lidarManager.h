@@ -8,7 +8,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <fcntl.h>
-#include "Common.h"
+#include "PACLidarCommon.h"
 
 class lidarManager
 {
@@ -16,7 +16,9 @@ public:
     lidarManager(std::string ip = "192.168.1.199", uint16_t port = 5000);
     ~lidarManager();
 
-    int connectLidar(uint32_t timeout_sec=0);
+    int connect2Lidar(uint32_t timeout_sec=0);
+
+    int disconnectFromLidar();
 
     /*
     * @desc:以储存的参数启动雷达电机以及数据通讯
@@ -79,9 +81,7 @@ private:
     */
     static void *dataRecvFunc(void *recver);
 
-    int reconnectLidar();
-
-    int32_t select_start_degree(PacLidar::LidarData_t *arr,size_t size);
+    int reconnect2Lidar();
 
 private:
     int lidarSockFD;
@@ -110,7 +110,7 @@ private:
         PacLidar::lidarCMD dataType;
     } lidarParam;
     
-    
+    struct timeval rcvtimeout;
 
     volatile bool isCap;
 

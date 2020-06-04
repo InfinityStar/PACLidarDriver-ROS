@@ -22,8 +22,8 @@ int main(int argc, char **argv)
     // ros::Rate rt(10);
 
     lidarManager lm = lidarManager();
-    lm.connectLidar();
-    lm.startupLidar(PacLidar::SET_SPEED_HZ_15,PacLidar::SET_DATA_ORIGINAL);
+    lm.connect2Lidar();
+    lm.startupLidar(PacLidar::SET_SPEED_HZ_10,PacLidar::SET_DATA_CHECKED);
     float scanRans[PAC_MAX_BEAMS];
     float scanIntes[PAC_MAX_BEAMS];
 
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
         scanData.time_increment = scanData.scan_time / (PAC_MAX_BEAMS-1);
         
         scanPub.publish(scanData);
-        ROS_INFO("Published.Spent %f.",scanData.scan_time);
+        // ROS_INFO("Published.Spent %f.",scanData.scan_time);
         bzero(scanRans,PAC_MAX_BEAMS);
         bzero(scanIntes,PAC_MAX_BEAMS);
     }

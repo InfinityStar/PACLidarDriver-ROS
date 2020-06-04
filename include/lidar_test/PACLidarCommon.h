@@ -32,20 +32,20 @@ namespace PacLidar
 {
     enum lidarCMD
     {
-        CTRL_START = 0x7362,
-        CTRL_STOP = 0x6f70,
-        SET_SPEED_HZ_10 = 0x500a,
-        SET_SPEED_HZ_15 = 0x500f,
-        SET_SPEED_HZ_20 = 0x5014,
+        CTRL_START        = 0x7362,
+        CTRL_STOP         = 0x6f70,
+        SET_SPEED_HZ_10   = 0x500a,
+        SET_SPEED_HZ_15   = 0x500f,
+        SET_SPEED_HZ_20   = 0x5014,
         SET_DATA_ORIGINAL = 0x6474,
-        SET_DATA_CHECKED = 0x6475,
+        SET_DATA_CHECKED  = 0x6475,
     };
 
     enum lidarDataDef
     {
         LIDAR_DATA_NULL = 0x0000,
         LIDAR_DATA_HEAD = 0x0010,
-        LIDAR_DATA_END = 0x8ca0,
+        LIDAR_DATA_END  = 0x8ca0,
     };
 
 #pragma pack(1)
@@ -58,7 +58,7 @@ namespace PacLidar
 #pragma pack()
 
     static const LidarData_t LIDAR_DATA_HEADER_T = {LIDAR_DATA_HEAD, LIDAR_DATA_NULL, LIDAR_DATA_NULL};
-    static const LidarData_t LIDAR_DATA_TAIL_T = {LIDAR_DATA_END, LIDAR_DATA_NULL, LIDAR_DATA_NULL};
+    static const LidarData_t LIDAR_DATA_TAIL_T   = {LIDAR_DATA_END,  LIDAR_DATA_NULL, LIDAR_DATA_NULL};
 
 } // namespace PacLidar
 

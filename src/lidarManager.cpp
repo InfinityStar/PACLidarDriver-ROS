@@ -9,10 +9,19 @@ lidarManager::lidarManager(string ip, uint16_t port)
 
     lidarParam.speed = PacLidar::SET_SPEED_HZ_10;
     lidarParam.dataType = PacLidar::SET_DATA_CHECKED;
+    dataReceiver = 0;
+    isCap = false;
 
     lidarSockAddr = new sockaddr_in();
-    if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         cerr << "Fata:Create socket failed:" << strerror(errno) << std::endl;
+        exit(-1);
+    }
+
+    rcvtimeout.tv_sec  = 3;
+    rcvtimeout.tv_usec = 0;
+    setsockopt(lidarSockFD,SOL_SOCKET,SO_RCVTIMEO,&rcvtimeout,sizeof(rcvtimeout));
+
     bzero(lidarSockAddr, sizeof(struct sockaddr_in));
     lidarSockAddr->sin_family = AF_INET;
     lidarSockAddr->sin_addr.s_addr = inet_addr(ip.c_str());
@@ -25,24 +34,18 @@ lidarManager::lidarManager(string ip, uint16_t port)
 
 lidarManager::~lidarManager()
 {
-    pthread_mutex_destroy(&mutex);
-
-    if (lidarSockFD >= 0)
-    {
-        cout << "Close lidar" << endl;
-        stopLidar();
-        if (pthread_kill(dataReceiver,0)==0)
-        {
-            pthread_join(dataReceiver, NULL);
-        }
-        close(lidarSockFD);
-    }
+    cout << "Stopping lidar..." << endl;
+    stopLidar();
+    cout << "Disconnecting from lidar..." << endl;
+    disconnectFromLidar();
 
     if (lidarSockAddr != nullptr)
         delete lidarSockAddr;
+
+    pthread_mutex_destroy(&mutex);
 }
 
-int lidarManager::connectLidar(uint32_t timeout_sec)
+int lidarManager::connect2Lidar(uint32_t timeout_sec)
 {
     cout << "Connecting to lidar..." << endl;
     bool foreverLoop = !timeout_sec;
@@ -79,13 +82,22 @@ int lidarManager::connectLidar(uint32_t timeout_sec)
     return 0;
 }
 
-int lidarManager::reconnectLidar()
+int lidarManager::reconnect2Lidar()
 {
     close(lidarSockFD);
-    if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         cerr << "Fata:Reset socket failed:" << strerror(errno) << std::endl;
-    while(connectLidar()!=0) sleep(1);
-    return 0;
+        exit(-1);
+    }
+    setsockopt(lidarSockFD,SOL_SOCKET,SO_RCVTIMEO,&rcvtimeout,sizeof(rcvtimeout));
+    return connect2Lidar();
+}
+
+int lidarManager::disconnectFromLidar()
+{
+    if (dataReceiver>0 && pthread_kill(dataReceiver,0)==0)
+        stopLidar();
+    return close(lidarSockFD);
 }
 
 int lidarManager::startupLidar()
@@ -95,38 +107,43 @@ int lidarManager::startupLidar()
 
 int lidarManager::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_type)
 {
+    lidarParam.dataType = data_type;
+    lidarParam.speed = speed;
     send_cmd_to_lidar(data_type);
     send_cmd_to_lidar(speed);
     if (send_cmd_to_lidar(PacLidar::CTRL_START) < 0)
         return -1;
 
-    isCap = true;
-
-    pthread_create(&dataReceiver, NULL, dataRecvFunc, (void *)this);
-    while (pthread_kill(dataReceiver,0)!=0)
+    if(isCap == false)
     {
-        cout<<"Wait for receiver thread starting."<<endl;
-        msleep(1);
+        isCap = true;
+        pthread_create(&dataReceiver, NULL, dataRecvFunc, (void *)this);
+        while (pthread_kill(dataReceiver, 0) != 0)
+        {
+            cout << "Wait for receiver thread starting." << endl;
+            msleep(1);
+        }
     }
     return 0;
 }
 
 int lidarManager::stopLidar()
 {
-    isCap = false;
-    pthread_mutex_lock(&mutex);
-    if (send_cmd_to_lidar(PacLidar::CTRL_STOP) < 0)
+    if (dataReceiver>0 && pthread_kill(dataReceiver,0)==0){
+        isCap = false;
+        pthread_join(dataReceiver, NULL);
+    }
+    if(send_cmd_to_lidar(PacLidar::CTRL_STOP)<0)
         return -1;
     else
         return 0;
-    pthread_mutex_unlock(&mutex);
 }
 
 int lidarManager::setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type)
 {
     lidarParam.speed = speed;
     lidarParam.dataType = data_type;
-    if(send_cmd_to_lidar(speed)==-1 && send_cmd_to_lidar(data_type)==-1){
+    if(send_cmd_to_lidar(speed)==-1 || send_cmd_to_lidar(data_type)==-1){
         cerr<<"Setup lidar failed : "<<strerror(errno)<<endl;
         return -1;
     }
@@ -181,12 +198,18 @@ int lidarManager::send_cmd_to_lidar(uint16_t cmd)
 {
     if (lidarSockFD < 0)
         return -1;
-    cmd = htons(cmd);
-    int rtn = send(lidarSockFD, &cmd, sizeof(cmd), 0);
-    if (rtn < 0 || rtn != sizeof(cmd))
-        cout << "Send cmd failed:" << strerror(errno) << endl;
-    else if (rtn == sizeof(cmd))
-        cout << "Send cmd : 0x" << std::hex << ntohs(cmd) << " succed" << endl;
+    uint16_t netCMD = htons(cmd);
+    int rtn = send(lidarSockFD, &netCMD, sizeof(netCMD), 0);
+    if (rtn < 0 || rtn != sizeof(netCMD)){
+        cerr << "Error:Send cmd failed with errno "<<errno<<" : "<< strerror(errno) << endl;
+        if(errno == EADV){ //reset by peer
+            cout<<"It seems cause connection reset by peer,trying to reconnect it..."<<endl;
+            reconnect2Lidar();
+            return send_cmd_to_lidar(cmd);
+        }
+    }
+    else if (rtn == sizeof(netCMD))
+        cout << "Send cmd : 0x" << std::hex << ntohs(netCMD) << " succed" << endl;
     msleep(50);
     return rtn;
 }
@@ -238,13 +261,19 @@ void lidarManager::capLidarData()
             }
             else if (recvedNum == 0)
             {
-                cout << "Connection reset by peer,Ready to reconnecting." << endl;
-                reconnectLidar();
+                cout << "Connection reset by peer,Trying to reconnect it..." << endl;
+                reconnect2Lidar();
                 startupLidar();
             }
             else
             {
-                cerr << "Error:Receive msg from lidar failed:" << strerror(errno) << std::endl;
+                cerr << "Error:Receive msg from lidar failed with errno:"<< errno <<": "<< strerror(errno) << std::endl;
+                if(errno == EAGAIN)
+                {
+                    cout<<"Server may closed,trying to reconnect it..."<<endl;
+                    reconnect2Lidar();
+                    startupLidar();
+                }
             }
         }
         
@@ -275,10 +304,13 @@ void lidarManager::capLidarData()
             static bool findHeaderData = false,dataAvalible = false;
             
             //提取上次结余的数据
-            if(remain_size>0){
-                for(auto &i : data_remains){
-                    if(i.part2<PAC_MAX_BEAMS)
-                        oneCircleData[i.part2] = i;
+            if (remain_size > 0)
+            {
+                for (int i=0;i<remain_size;i++)
+                {
+                    PacLidar::LidarData_t datai = data_remains[i];
+                    if (datai.part2 < PAC_MAX_BEAMS)
+                        oneCircleData[datai.part2] = datai;
                 }
                 findHeaderData = true;
                 remain_size = 0;
@@ -308,14 +340,14 @@ void lidarManager::capLidarData()
                             if (i + 1 < PAC_NUM_OF_ONE_SCAN)
                             {
                                 PacLidar::LidarData_t datanx = scanDataPkg[i + 1];
-                                if ((datanx.part2 < PAC_MAX_BEAMS) && (PAC_MAX_BEAMS - datanx.part2 <= BEAM_ACCURACY))
+                                if ((datanx.part2 <= PAC_MAX_BEAMS) && (PAC_MAX_BEAMS - datanx.part2 <= BEAM_ACCURACY))
                                     dataAvalible = false;
                                 else
                                 {
                                     dataAvalible = true;
                                     remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
                                     bzero(data_remains,sizeof(data_remains));
-                                    memcpy(data_remains,scanDataPkg+i+1,remain_size);
+                                    memcpy(data_remains,scanDataPkg+i+1,remain_size*sizeof(PacLidar::LidarData_t));
                                     break;
                                 }
                             }
@@ -324,6 +356,14 @@ void lidarManager::capLidarData()
                                 dataAvalible = true;
                         }
                     }
+                }
+                else if(datai.part2 == PAC_MAX_BEAMS && findHeaderData){
+                    oneCircleData[0] = datai;
+                    dataAvalible = true;
+                    remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
+                    bzero(data_remains, sizeof(data_remains));
+                    memcpy(data_remains, scanDataPkg + i + 1, remain_size*sizeof(PacLidar::LidarData_t));
+                    break;
                 }
             }
             //提取一周数据完毕，解锁
