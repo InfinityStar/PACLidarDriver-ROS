@@ -16,6 +16,11 @@ public:
     lidarManager(std::string ip = "192.168.1.199", uint16_t port = 5000);
     ~lidarManager();
 
+    /*
+    * @desc:指定参数启动雷达电机以及数据通讯，且修改储存的参数
+    * @params：雷达的转速以及雷达的数据类型
+    * @return：成功 0 ，失败 -1
+    */
     int connect2Lidar(uint32_t timeout_sec=0);
 
     int disconnectFromLidar();
