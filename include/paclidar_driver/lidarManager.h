@@ -13,7 +13,9 @@
 class lidarManager
 {
 public:
+    lidarManager() = default;
     lidarManager(std::string ip = "192.168.1.199", uint16_t port = 5000);
+    lidarManager(lidarManager&) = delete;
     ~lidarManager();
 
     /*
@@ -121,6 +123,7 @@ private:
 
     pthread_mutex_t mutex;
     pthread_mutexattr_t mutexattr;
+    pthread_cond_t cond_CopyPkg;
 };
 
 #endif //__LIDAR_MANAGER_H__

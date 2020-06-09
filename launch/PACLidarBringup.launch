@@ -5,12 +5,12 @@
         <arg name="pac_lidar_port"        default="5000"          />
         <arg name="pac_lidar_speed"       default="10"            />
         <arg name="pac_lidar_data_check"  default="true"          />
-        <arg name="pac_lidar_scan_topic"  default="/scan"          />
+        <arg name="pac_lidar_scan_topic"  default="/scan"         />
         <arg name="pac_lidar_ctrl_srv"    default="pacLidarCtrl"  />
-        <arg name="pac_lidar_frame_id"    default="pac_lidar_link"/>
+        <arg name="pac_lidar_frame_id"    default="world"         /> 
         <arg name="pac_lidar_range_min"   default="0.05"          />
         <arg name="pac_lidar_range_max"   default="60.0"          />
-        
+        <!-- <arg name="pac_lidar_frame_id"    default="pac_lidar_link"/> -->
 
         <!-- 启动雷达驱动节点 -->
         <node name="driver_node"       pkg="paclidar_driver" type="driver_node">

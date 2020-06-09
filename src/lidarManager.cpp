@@ -30,6 +30,7 @@ lidarManager::lidarManager(string ip, uint16_t port)
     pthread_mutexattr_init(&mutexattr);
     pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK);
     pthread_mutex_init(&mutex, &mutexattr);
+    pthread_cond_init(&cond_CopyPkg,NULL);
 }
 
 lidarManager::~lidarManager()
@@ -43,6 +44,7 @@ lidarManager::~lidarManager()
         delete lidarSockAddr;
 
     pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&cond_CopyPkg);
 }
 
 int lidarManager::connect2Lidar(uint32_t timeout_sec)
@@ -158,7 +160,6 @@ int lidarManager::getLidarScanByBeam(float *ranges, float *intensities, unsigned
 
     memset(ranges,      0, (stop_beam + 1 - start_beam) * sizeof(float));
     memset(intensities, 0, (stop_beam + 1 - start_beam) * sizeof(float));
-
     if (pthread_mutex_lock(&mutex) == 0)
     {
         float range = 0;
@@ -176,7 +177,7 @@ int lidarManager::getLidarScanByBeam(float *ranges, float *intensities, unsigned
                 intensities[i] = 0;
             }
         }
-
+        pthread_cond_signal(&cond_CopyPkg);
         pthread_mutex_unlock(&mutex);
         return 0;
     }
@@ -202,7 +203,7 @@ int lidarManager::send_cmd_to_lidar(uint16_t cmd)
     int rtn = send(lidarSockFD, &netCMD, sizeof(netCMD), 0);
     if (rtn < 0 || rtn != sizeof(netCMD)){
         cerr << "Error:Send cmd failed with errno "<<errno<<" : "<< strerror(errno) << endl;
-        if(errno == EADV){ //reset by peer
+        if(errno == ECONNRESET){ //reset by peer
             cout<<"It seems cause connection reset by peer,trying to reconnect it..."<<endl;
             reconnect2Lidar();
             return send_cmd_to_lidar(cmd);
@@ -313,15 +314,11 @@ void lidarManager::capLidarData()
                         oneCircleData[datai.part2] = datai;
                 }
                 findHeaderData = true;
+                bzero(data_remains, sizeof(data_remains));
                 remain_size = 0;
             }
-
-            //判断当前包中是否存在起始角度的数据
-            if(!findHeaderData){
-                if(scanDataPkg[0].part2!=0)
-                    if( (scanDataPkg[PAC_NUM_OF_ONE_SCAN-1].part2 - scanDataPkg[0].part2) > 0)
-                        continue;
-            }
+            //如果注释掉下面这条，保证读取的是完整的一周数据(会有丢失，点云偶尔会卡一下)，否则不保证
+            findHeaderData = true;
 
             //提取本次收到的数据
             for(int i=0;i<PAC_NUM_OF_ONE_SCAN;i++){
@@ -346,7 +343,6 @@ void lidarManager::capLidarData()
                                 {
                                     dataAvalible = true;
                                     remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
-                                    bzero(data_remains,sizeof(data_remains));
                                     memcpy(data_remains,scanDataPkg+i+1,remain_size*sizeof(PacLidar::LidarData_t));
                                     break;
                                 }
@@ -361,7 +357,6 @@ void lidarManager::capLidarData()
                     oneCircleData[0] = datai;
                     dataAvalible = true;
                     remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
-                    bzero(data_remains, sizeof(data_remains));
                     memcpy(data_remains, scanDataPkg + i + 1, remain_size*sizeof(PacLidar::LidarData_t));
                     break;
                 }
@@ -369,10 +364,13 @@ void lidarManager::capLidarData()
             //提取一周数据完毕，解锁
             if (dataAvalible)
             {
-                pthread_mutex_unlock(&mutex);
                 // cout << "Got one full pkg." << endl;
-                //给1us时间让主线程获得锁
-                usleep(1);
+                struct timespec ts;
+                timespec_get(&ts,TIME_UTC);
+                ts.tv_nsec += 50*1000; //50ms
+                pthread_cond_timedwait(&cond_CopyPkg,&mutex,&ts);
+                pthread_mutex_unlock(&mutex);
+                
                 pthread_mutex_lock(&mutex);
                 bzero(oneCircleData, sizeof(oneCircleData));
                 //重置两个标志

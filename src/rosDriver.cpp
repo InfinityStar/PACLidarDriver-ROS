@@ -29,10 +29,9 @@ lidarManager *lm_ptr;
 pthread_t svr_thread_t;
 
 void getAllParams(string path);
-void initLaserScanMsg(sensor_msgs::LaserScan& msg);
 void on_sigint_recved(int signo);
 void* ctrl_srv_advertise_func(void* node_handle);
-
+void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,float* ranges,float* intens);
 
 int main(int argc, char **argv)
 {
@@ -64,37 +63,33 @@ int main(int argc, char **argv)
         break;
     }
 
-    lidarManager lm = lidarManager(lidarIP,lidarPort);
+    lidarManager lm(lidarIP,lidarPort);
     lm_ptr = &lm;
     lm.connect2Lidar();
     lm.startupLidar(spd,dtType);
     float scanRans[PAC_MAX_BEAMS];
     float scanIntes[PAC_MAX_BEAMS];
-
-    sensor_msgs::LaserScan scanData;
-    initLaserScanMsg(scanData);
+    sensor_msgs::LaserScan scanMsg;
     
     pthread_create(&svr_thread_t,NULL,ctrl_srv_advertise_func,&ros_nh);
 
+    ros::Rate rt(10);
     while (ros::ok())
     {
         double startTM = ros::Time::now().toSec();
         lm.getLidarScanByAngle(scanRans, scanIntes,0,360);
-
-        scanData.header.stamp = ros::Time::now();
-        double endTM = scanData.header.stamp.toSec();
         
-        scanData.ranges.assign(scanRans,scanRans+PAC_MAX_BEAMS);
-        scanData.intensities.assign(scanIntes,scanIntes+PAC_MAX_BEAMS);
+        publishLaserScanMsg(scanPub,scanMsg,ros::Time::now().toSec()-startTM,scanRans,scanIntes);
 
-        scanData.scan_time = endTM - startTM;
-        scanData.time_increment = scanData.scan_time / (PAC_MAX_BEAMS-1);
-        
-        scanPub.publish(scanData);
-        // ROS_INFO("Published.Spent %f.",scanData.scan_time);
+        if(scanMsg.scan_time>0.15)
+            ROS_INFO("Scan Spent %f.",scanMsg.scan_time);
+
         bzero(scanRans,PAC_MAX_BEAMS);
         bzero(scanIntes,PAC_MAX_BEAMS);
+        // ROS_INFO("Published.Spent %f.",ros::Time::now().toSec()-startTM);
+        // rt.sleep();
     }
+    pthread_join(svr_thread_t,NULL);
     return 0;
 }
 
@@ -105,9 +100,10 @@ void on_sigint_recved(int signo)
     exit(0);
 }
 
-void initLaserScanMsg(sensor_msgs::LaserScan& msg)
+void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,float* ranges,float* intens)
 {
     msg.header.frame_id = frameID;
+    // msg.header.stamp = ros::Time::now();
 
     msg.angle_min = angleMin;
     msg.angle_max = angleMax;
@@ -115,6 +111,13 @@ void initLaserScanMsg(sensor_msgs::LaserScan& msg)
 
     msg.range_max = rangeMax;
     msg.range_min = rangeMin;
+
+    msg.ranges.assign(ranges,ranges+PAC_MAX_BEAMS);
+    msg.intensities.assign(intens, intens + PAC_MAX_BEAMS);
+
+    msg.scan_time = scanTm;
+    msg.time_increment = msg.scan_time / (PAC_MAX_BEAMS - 1);
+    pub.publish(msg);
 }
 
 void getAllParams(string path)
@@ -164,11 +167,12 @@ bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,
         spd = PacLidar::SET_SPEED_HZ_20;
         break;
     default:
+        req.lidarSpeed = 10;
         spd = PacLidar::SET_SPEED_HZ_10;
         break;
     }
-    lm_ptr->setupLidar(spd,dtType);
-    return true;
+    ROS_INFO("Received cmd to set LidarSpeed: %d Hz,DataChecked: %d.",req.lidarSpeed,req.dataCheck);
+    return (!lm_ptr->setupLidar(spd,dtType));
 }            
 
 void* ctrl_srv_advertise_func(void* node_handle)
