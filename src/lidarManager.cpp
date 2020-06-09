@@ -313,24 +313,24 @@ void lidarManager::capLidarData()
                     if (datai.part2 < PAC_MAX_BEAMS)
                         oneCircleData[datai.part2] = datai;
                 }
-                findHeaderData = true;
+                // findHeaderData = true;
                 bzero(data_remains, sizeof(data_remains));
                 remain_size = 0;
             }
-            //如果注释掉下面这条，保证读取的是完整的一周数据(会有丢失，点云偶尔会卡一下)，否则不保证
-            findHeaderData = true;
+            // //如果注释掉下面这条，保证读取的是完整的一周数据(会有丢失，点云偶尔会卡一下)，否则不保证
+            // findHeaderData = true;
 
             //提取本次收到的数据
             for(int i=0;i<PAC_NUM_OF_ONE_SCAN;i++){
                 PacLidar::LidarData_t datai = scanDataPkg[i];
                 if (datai.part2 < PAC_MAX_BEAMS)
                 {
-                    //寻找起始角度数据
-                    if (datai.part2 - 0 <= BEAM_ACCURACY)
-                        findHeaderData = true;
+                    // //寻找起始角度数据
+                    // if (datai.part2 - 0 <= BEAM_ACCURACY)
+                    //     findHeaderData = true;
                     //寻找结束角度数据
-                    if (findHeaderData)
-                    {
+                    // if (findHeaderData)
+                    // {
                         oneCircleData[datai.part2] = datai;
                         if (PAC_MAX_BEAMS - datai.part2 <= BEAM_ACCURACY)
                         {
@@ -351,9 +351,9 @@ void lidarManager::capLidarData()
                             else
                                 dataAvalible = true;
                         }
-                    }
+                    // }
                 }
-                else if(datai.part2 == PAC_MAX_BEAMS && findHeaderData){
+                else if(datai.part2 == PAC_MAX_BEAMS ){//&& findHeaderData){
                     oneCircleData[0] = datai;
                     dataAvalible = true;
                     remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
@@ -375,7 +375,7 @@ void lidarManager::capLidarData()
                 bzero(oneCircleData, sizeof(oneCircleData));
                 //重置两个标志
                 dataAvalible = false;
-                findHeaderData = false;
+                // findHeaderData = false;
             }
             /*************提取扫描数据-结束******************/
         }
