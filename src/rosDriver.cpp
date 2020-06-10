@@ -6,11 +6,13 @@
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <paclidar_driver/PACLidarCtrl.h>
+#include <paclidar_driver/LidarState.h>
 
 using namespace std;
 
 static string nodeFullName = "pac_lidar_node";
 static string scanTpcName  = "scan";
+static string stateTpcName = "pac_lidar_state";
 static string ctrlSrvName  = "pac_lidar_ctrl";
 
 static string lidarIP = "192.168.1.199";
@@ -44,6 +46,7 @@ int main(int argc, char **argv)
     getAllParams(nodeFullName);
 
     ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>(scanTpcName,1);
+    ros::Publisher statePub = ros_nh.advertise<paclidar_driver::LidarState>(stateTpcName,1);
 
     PacLidar::lidarCMD dtType = checkData?PacLidar::SET_DATA_CHECKED:PacLidar::SET_DATA_ORIGINAL;
     PacLidar::lidarCMD spd;
@@ -70,19 +73,28 @@ int main(int argc, char **argv)
     float scanRans[PAC_MAX_BEAMS];
     float scanIntes[PAC_MAX_BEAMS];
     sensor_msgs::LaserScan scanMsg;
+
+    paclidar_driver::LidarState stateMsg;
+    PacLidar::lidarState_t dev_state;
     
     pthread_create(&svr_thread_t,NULL,ctrl_srv_advertise_func,&ros_nh);
 
-    ros::Rate rt(10);
+    // ros::Rate rt(10);
     while (ros::ok())
     {
         double startTM = ros::Time::now().toSec();
         lm.getLidarScanByAngle(scanRans, scanIntes,0,360);
-        
         publishLaserScanMsg(scanPub,scanMsg,ros::Time::now().toSec()-startTM,scanRans,scanIntes);
 
         if(scanMsg.scan_time>0.15)
             ROS_INFO("Scan Spent %f.",scanMsg.scan_time);
+
+        lm.getLidarState(dev_state);
+        stateMsg.firmware_version = dev_state.version;
+        stateMsg.internal_temperature = dev_state.temprature;
+        stateMsg.motor_speed = dev_state.speed;
+        stateMsg.serial_number = dev_state.id;
+        statePub.publish(stateMsg);
 
         bzero(scanRans,PAC_MAX_BEAMS);
         bzero(scanIntes,PAC_MAX_BEAMS);
@@ -123,16 +135,19 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
 void getAllParams(string path)
 {
     string key="ScanTopic";
-    assert(ros::param::get(path+key,scanTpcName)==true);
+    ros::param::get(path + key, scanTpcName);
 
     key = "CtrlSrv";
-    assert(ros::param::get(path + key, ctrlSrvName) == true);
+    ros::param::get(path + key, ctrlSrvName);
+
+    key = "StateTopic";
+    ros::param::get(path + key, stateTpcName);
 
     key = "IP";
-    assert(ros::param::get(path + key, lidarIP) == true);
+    ros::param::get(path + key, lidarIP);
 
     key = "Port";
-    assert(ros::param::get(path + key, lidarPort) == true);
+    ros::param::get(path + key, lidarPort);
 
     key = "Speed";
     ros::param::get(path + key, lidarSpeed);
@@ -141,7 +156,7 @@ void getAllParams(string path)
     ros::param::get(path + key, checkData);
 
     key = "FrameID";
-    assert(ros::param::get(path + key, frameID) == true);
+    ros::param::get(path + key, frameID);
 
     key = "RangeMin";
     ros::param::get(path + key, rangeMin);
@@ -179,9 +194,6 @@ void* ctrl_srv_advertise_func(void* node_handle)
 {
     ros::NodeHandle *nh = (ros::NodeHandle *)node_handle;
     ros::ServiceServer ctrlSvr = nh->advertiseService(ctrlSrvName,on_srv_called);
-    while(ros::ok())
-    {
-        ros::spin();
-    }
+    ros::spin();
     ctrlSvr.shutdown();
 }

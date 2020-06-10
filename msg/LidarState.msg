@@ -1,0 +1,4 @@
+uint32 firmware_version
+uint32 serial_number
+int32  internal_temperature
+uint16 motor_speed

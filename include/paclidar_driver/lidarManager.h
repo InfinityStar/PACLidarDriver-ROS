@@ -18,6 +18,7 @@ public:
     lidarManager(lidarManager&) = delete;
     ~lidarManager();
 
+public:
     /*
     * @desc:指定参数启动雷达电机以及数据通讯，且修改储存的参数
     * @params：雷达的转速以及雷达的数据类型
@@ -25,6 +26,11 @@ public:
     */
     int connect2Lidar(uint32_t timeout_sec=0);
 
+    /*
+    * @desc:停止接收线程，关闭电机，关闭socket链接
+    * @params：Null
+    * @return：成功 0 ，失败 -1
+    */
     int disconnectFromLidar();
 
     /*
@@ -40,8 +46,19 @@ public:
     */
     int startupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type);
 
+    /*
+    * @desc:停止接收线程，关闭电机
+    * @params：Null
+    * @return：成功 0 ，失败 -1
+    */
     int stopLidar();
 
+    /*
+    * @desc:设置参数，如果线程在运行，则向雷达发送修改参数指令，
+    *       否则只修改结构体中的参数
+    * @params：雷达转速、数据类型
+    * @return：成功 0 ，失败 -1
+    */
     int setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type);
 
     /* 
@@ -61,6 +78,13 @@ public:
      * @return:成功返回0,失败返回-1
      */
     int getLidarScanByAngle(float *ranges, float *intensities, float start_angle = 0, float stop_angle = 360);
+
+    /* 
+    * @desc：获取雷达状态，获取之前请启动雷达
+    * @params：state结构体
+    * @return: 成功返回0,失败返回-1
+    */
+    int getLidarState(PacLidar::lidarState_t &state);
 
     /* 
     * @desc：作为线程获取数据使用，请勿调用 
@@ -88,6 +112,9 @@ private:
     */
     static void *dataRecvFunc(void *recver);
 
+    /* 
+     *@desc：断开重连 
+    */
     int reconnect2Lidar();
 
 private:
@@ -103,13 +130,7 @@ private:
     PacLidar::LidarData_t scanDataPkg[PAC_NUM_OF_ONE_SCAN];
     PacLidar::LidarData_t oneCircleData[PAC_MAX_BEAMS];
     
-    struct
-    {
-        uint32_t version    = 0;
-        uint32_t id         = 0;
-        int      temprature = 0;
-        uint16_t speed      = 0;
-    } lidarStatus;
+    PacLidar::lidarState_t lidarStatus;
 
     struct 
     {

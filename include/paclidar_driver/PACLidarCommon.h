@@ -48,6 +48,14 @@ namespace PacLidar
         LIDAR_DATA_END  = 0x8ca0,
     };
 
+    typedef struct
+    {
+        uint32_t version    = 0;
+        uint32_t id         = 0;
+        int      temprature = 0;
+        uint16_t speed      = 0;
+    }  lidarState_t;
+
 #pragma pack(1)
     typedef struct
     {

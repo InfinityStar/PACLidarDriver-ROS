@@ -194,6 +194,16 @@ int lidarManager::getLidarScanByAngle(float *ranges, float *intensities, float s
     return getLidarScanByBeam(ranges,intensities,start_beam,stop_beam);
 }
 
+int lidarManager::getLidarState(PacLidar::lidarState_t &state)
+{
+    if (lidarStatus.id != 0)
+    {
+        state = lidarStatus;
+        return 0;
+    }
+    else
+        return -1;
+}
 
 int lidarManager::send_cmd_to_lidar(uint16_t cmd)
 {
@@ -302,7 +312,7 @@ void lidarManager::capLidarData()
             memcpy(scanDataPkg, sockDataPkg + 1, sizeof(scanDataPkg));
 
             //初始化起始角度和结束角度寻找的标志位
-            static bool findHeaderData = false,dataAvalible = false;
+            static bool dataAvalible = false;
             
             //提取上次结余的数据
             if (remain_size > 0)
@@ -313,47 +323,37 @@ void lidarManager::capLidarData()
                     if (datai.part2 < PAC_MAX_BEAMS)
                         oneCircleData[datai.part2] = datai;
                 }
-                // findHeaderData = true;
                 bzero(data_remains, sizeof(data_remains));
                 remain_size = 0;
             }
-            // //如果注释掉下面这条，保证读取的是完整的一周数据(会有丢失，点云偶尔会卡一下)，否则不保证
-            // findHeaderData = true;
 
             //提取本次收到的数据
             for(int i=0;i<PAC_NUM_OF_ONE_SCAN;i++){
                 PacLidar::LidarData_t datai = scanDataPkg[i];
                 if (datai.part2 < PAC_MAX_BEAMS)
                 {
-                    // //寻找起始角度数据
-                    // if (datai.part2 - 0 <= BEAM_ACCURACY)
-                    //     findHeaderData = true;
-                    //寻找结束角度数据
-                    // if (findHeaderData)
-                    // {
-                        oneCircleData[datai.part2] = datai;
-                        if (PAC_MAX_BEAMS - datai.part2 <= BEAM_ACCURACY)
+                    oneCircleData[datai.part2] = datai;
+                    if (PAC_MAX_BEAMS - datai.part2 <= BEAM_ACCURACY)
+                    {
+                        if (i + 1 < PAC_NUM_OF_ONE_SCAN)
                         {
-                            if (i + 1 < PAC_NUM_OF_ONE_SCAN)
-                            {
-                                PacLidar::LidarData_t datanx = scanDataPkg[i + 1];
-                                if ((datanx.part2 <= PAC_MAX_BEAMS) && (PAC_MAX_BEAMS - datanx.part2 <= BEAM_ACCURACY))
-                                    dataAvalible = false;
-                                else
-                                {
-                                    dataAvalible = true;
-                                    remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
-                                    memcpy(data_remains,scanDataPkg+i+1,remain_size*sizeof(PacLidar::LidarData_t));
-                                    break;
-                                }
-                            }
-                            //丢弃后面的数据(误差范围内)
+                            PacLidar::LidarData_t datanx = scanDataPkg[i + 1];
+                            if ((datanx.part2 <= PAC_MAX_BEAMS) && (PAC_MAX_BEAMS - datanx.part2 <= BEAM_ACCURACY))
+                                dataAvalible = false;
                             else
+                            {
                                 dataAvalible = true;
+                                remain_size = PAC_NUM_OF_ONE_SCAN - i - 1;
+                                memcpy(data_remains, scanDataPkg + i + 1, remain_size * sizeof(PacLidar::LidarData_t));
+                                break;
+                            }
                         }
-                    // }
+                        //丢弃后面的数据(误差范围内)
+                        else
+                            dataAvalible = true;
+                    }
                 }
-                else if(datai.part2 == PAC_MAX_BEAMS ){//&& findHeaderData){
+                else if(datai.part2 == PAC_MAX_BEAMS ){
                     oneCircleData[0] = datai;
                     dataAvalible = true;
                     remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
@@ -373,9 +373,8 @@ void lidarManager::capLidarData()
                 
                 pthread_mutex_lock(&mutex);
                 bzero(oneCircleData, sizeof(oneCircleData));
-                //重置两个标志
+                //重置标志
                 dataAvalible = false;
-                // findHeaderData = false;
             }
             /*************提取扫描数据-结束******************/
         }
