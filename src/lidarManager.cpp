@@ -35,8 +35,6 @@ lidarManager::lidarManager(string ip, uint16_t port)
 
 lidarManager::~lidarManager()
 {
-    cout << "Stopping lidar..." << endl;
-    stopLidar();
     cout << "Disconnecting from lidar..." << endl;
     disconnectFromLidar();
 
@@ -60,7 +58,7 @@ int lidarManager::connect2Lidar(uint32_t timeout_sec)
         fcntl(lidarSockFD, F_SETFL, flag | O_NONBLOCK);
         errno = 0;
 
-        while ( connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr))==-1 )
+        while (lidarSockFD > 0 && connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr)) == -1)
         {
             if (errno != EAGAIN && errno!=EINPROGRESS && errno!=EALREADY) 
                 cout << strerror(errno) << std::endl;
@@ -70,14 +68,16 @@ int lidarManager::connect2Lidar(uint32_t timeout_sec)
                 if (!(--timeout_sec))
                 {
                     errno = ETIMEDOUT;
-                    fcntl(lidarSockFD, F_SETFL, flag);
+                    if (lidarSockFD > 0)
+                        fcntl(lidarSockFD, F_SETFL, flag);
                     return -1;
                 }
                 else
                     continue;
             }
         }
-        fcntl(lidarSockFD, F_SETFL, flag);
+        if (lidarSockFD > 0)
+            fcntl(lidarSockFD, F_SETFL, flag);
     }
 
     cout << "Conection is ready now." << endl;
@@ -97,9 +97,12 @@ int lidarManager::reconnect2Lidar()
 
 int lidarManager::disconnectFromLidar()
 {
-    if (dataReceiver>0 && pthread_kill(dataReceiver,0)==0)
+    if (pthread_kill(dataReceiver,0)==0)
         stopLidar();
-    return close(lidarSockFD);
+    if (lidarSockFD > 0)
+        return close(lidarSockFD);
+    else
+        return 0;
 }
 
 int lidarManager::startupLidar()
@@ -131,7 +134,7 @@ int lidarManager::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data
 
 int lidarManager::stopLidar()
 {
-    if (dataReceiver>0 && pthread_kill(dataReceiver,0)==0){
+    if (pthread_kill(dataReceiver,0)==0){
         isCap = false;
         pthread_join(dataReceiver, NULL);
     }
@@ -332,32 +335,33 @@ void lidarManager::capLidarData()
                 PacLidar::LidarData_t datai = scanDataPkg[i];
                 if (datai.part2 < PAC_MAX_BEAMS)
                 {
-                    oneCircleData[datai.part2] = datai;
-                    if (PAC_MAX_BEAMS - datai.part2 <= BEAM_ACCURACY)
+                    if (i != 0)
                     {
-                        if (i + 1 < PAC_NUM_OF_ONE_SCAN)
+                        PacLidar::LidarData_t dataPre = scanDataPkg[i - 1];
+                        if(datai.part2 - dataPre.part2<0)
                         {
-                            PacLidar::LidarData_t datanx = scanDataPkg[i + 1];
-                            if ((datanx.part2 <= PAC_MAX_BEAMS) && (PAC_MAX_BEAMS - datanx.part2 <= BEAM_ACCURACY))
-                                dataAvalible = false;
-                            else
-                            {
-                                dataAvalible = true;
-                                remain_size = PAC_NUM_OF_ONE_SCAN - i - 1;
-                                memcpy(data_remains, scanDataPkg + i + 1, remain_size * sizeof(PacLidar::LidarData_t));
-                                break;
-                            }
-                        }
-                        //丢弃后面的数据(误差范围内)
-                        else
                             dataAvalible = true;
+                            remain_size = PAC_NUM_OF_ONE_PKG - i;
+                            memcpy(data_remains, scanDataPkg + i, remain_size * sizeof(PacLidar::LidarData_t));
+                            break;
+                        }
                     }
+                    oneCircleData[datai.part2] = datai;
                 }
-                else if(datai.part2 == PAC_MAX_BEAMS ){
-                    oneCircleData[0] = datai;
+                else
+                {
                     dataAvalible = true;
-                    remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
-                    memcpy(data_remains, scanDataPkg + i + 1, remain_size*sizeof(PacLidar::LidarData_t));
+                    if(datai.part2 == PAC_MAX_BEAMS )
+                    {
+                        oneCircleData[0] = datai;
+                        remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
+                        memcpy(data_remains, scanDataPkg + i + 1, remain_size * sizeof(PacLidar::LidarData_t));
+                    }
+                    else
+                    {
+                        remain_size = PAC_NUM_OF_ONE_PKG - i;
+                        memcpy(data_remains, scanDataPkg + i, remain_size * sizeof(PacLidar::LidarData_t));
+                    }
                     break;
                 }
             }
@@ -367,7 +371,7 @@ void lidarManager::capLidarData()
                 // cout << "Got one full pkg." << endl;
                 struct timespec ts;
                 timespec_get(&ts,TIME_UTC);
-                ts.tv_nsec += 50*1000; //50ms
+                ts.tv_nsec += 10000000; //1ms
                 pthread_cond_timedwait(&cond_CopyPkg,&mutex,&ts);
                 pthread_mutex_unlock(&mutex);
                 

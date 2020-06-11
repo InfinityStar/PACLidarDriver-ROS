@@ -27,7 +27,7 @@ static float angleMin       = 0;
 static float angleMax       = -M_PI+DEGTORAD(PAC_ANGLE_RESOLUTION);
 static float angleIncrement = DEGTORAD(PAC_ANGLE_RESOLUTION);
 
-lidarManager *lm_ptr;
+lidarManager *lm_ptr = nullptr;
 pthread_t svr_thread_t;
 
 void getAllParams(string path);
@@ -37,8 +37,13 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
 
 int main(int argc, char **argv)
 {
+
+    lidarManager lm(lidarIP,lidarPort);
+    lm_ptr = &lm;
+
     signal(SIGINT,  on_sigint_recved);
     signal(SIGQUIT, on_sigint_recved);
+    signal(SIGTERM, on_sigint_recved);
 
     ros::init(argc,argv,"paclidar");
     ros::NodeHandle ros_nh;
@@ -66,8 +71,6 @@ int main(int argc, char **argv)
         break;
     }
 
-    lidarManager lm(lidarIP,lidarPort);
-    lm_ptr = &lm;
     lm.connect2Lidar();
     lm.startupLidar(spd,dtType);
     float scanRans[PAC_MAX_BEAMS];
@@ -109,6 +112,7 @@ void on_sigint_recved(int signo)
 {
     std::cout << "Received signal:" << strsignal(signo) << std::endl;
     ros::shutdown();
+    if(lm_ptr!=nullptr) lm_ptr->disconnectFromLidar();
     exit(0);
 }
 
