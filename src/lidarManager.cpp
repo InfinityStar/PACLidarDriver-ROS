@@ -304,9 +304,9 @@ void lidarManager::capLidarData()
         if (pkgHd && pkgTl)
         {
             /*************提取雷达状态-开始**********************/
-            lidarStatus.temprature = (sockDataPkg[PAC_IDX_OF_TMP].part1 << 8) + sockDataPkg[PAC_IDX_OF_TMP].part2;
-            lidarStatus.id = (sockDataPkg[PAC_IDX_OF_ID].part1 << 8) + sockDataPkg[PAC_IDX_OF_ID].part2;
-            lidarStatus.version = (sockDataPkg[PAC_IDX_OF_VER].part1 << 8) + sockDataPkg[PAC_IDX_OF_VER].part2;
+            lidarStatus.temprature = (sockDataPkg[PAC_IDX_OF_TMP].part1 << 16) + sockDataPkg[PAC_IDX_OF_TMP].part2;
+            lidarStatus.id = (sockDataPkg[PAC_IDX_OF_ID].part1 << 16) + sockDataPkg[PAC_IDX_OF_ID].part2;
+            lidarStatus.version = (sockDataPkg[PAC_IDX_OF_VER].part1 << 16) + sockDataPkg[PAC_IDX_OF_VER].part2;
             lidarStatus.speed = sockDataPkg[PAC_IDX_OF_SPD].part2;
             /*************提取雷达状态-结束**********************/
 
@@ -338,11 +338,11 @@ void lidarManager::capLidarData()
                     if (i != 0)
                     {
                         PacLidar::LidarData_t dataPre = scanDataPkg[i - 1];
-                        if(datai.part2 - dataPre.part2<0)
+                        if ((datai.part2 - dataPre.part2) < 0)
                         {
                             dataAvalible = true;
-                            remain_size = PAC_NUM_OF_ONE_PKG - i;
-                            memcpy(data_remains, scanDataPkg + i, remain_size * sizeof(PacLidar::LidarData_t));
+                            remain_size = PAC_NUM_OF_ONE_SCAN - i;
+                            memcpy(data_remains, &scanDataPkg[i], remain_size * sizeof(PacLidar::LidarData_t));
                             break;
                         }
                     }
@@ -355,12 +355,13 @@ void lidarManager::capLidarData()
                     {
                         oneCircleData[0] = datai;
                         remain_size = PAC_NUM_OF_ONE_SCAN-i-1;
-                        memcpy(data_remains, scanDataPkg + i + 1, remain_size * sizeof(PacLidar::LidarData_t));
+                        if(remain_size)
+                            memcpy(data_remains, &scanDataPkg[i+1], remain_size * sizeof(PacLidar::LidarData_t));
                     }
                     else
                     {
                         remain_size = PAC_NUM_OF_ONE_PKG - i;
-                        memcpy(data_remains, scanDataPkg + i, remain_size * sizeof(PacLidar::LidarData_t));
+                        memcpy(data_remains, &scanDataPkg[i], remain_size * sizeof(PacLidar::LidarData_t));
                     }
                     break;
                 }
@@ -371,7 +372,7 @@ void lidarManager::capLidarData()
                 // cout << "Got one full pkg." << endl;
                 struct timespec ts;
                 timespec_get(&ts,TIME_UTC);
-                ts.tv_nsec += 10000000; //1ms
+                ts.tv_nsec += 10000000; //10ms
                 pthread_cond_timedwait(&cond_CopyPkg,&mutex,&ts);
                 pthread_mutex_unlock(&mutex);
                 
