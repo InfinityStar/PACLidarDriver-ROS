@@ -10,6 +10,13 @@
 #include <fcntl.h>
 #include "PACLidarCommon.h"
 
+#define __DEBUG
+#ifdef __DEBUG
+#define DBG_INFO cout
+#else
+#define DGB_INFO 0 && cout
+#endif
+
 class lidarManager
 {
 public:

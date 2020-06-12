@@ -82,15 +82,12 @@ int main(int argc, char **argv)
     
     pthread_create(&svr_thread_t,NULL,ctrl_srv_advertise_func,&ros_nh);
 
-    // ros::Rate rt(10);
     while (ros::ok())
     {
         double startTM = ros::Time::now().toSec();
         lm.getLidarScanByAngle(scanRans, scanIntes,0,360);
         publishLaserScanMsg(scanPub,scanMsg,ros::Time::now().toSec()-startTM,scanRans,scanIntes);
-
-        if(scanMsg.scan_time>0.15)
-            ROS_INFO("Scan Spent %f.",scanMsg.scan_time);
+        if(scanMsg.scan_time>0.15) ROS_ERROR("Scan time over than 0.15s : %f",scanMsg.scan_time);
 
         lm.getLidarState(dev_state);
         stateMsg.firmware_version = dev_state.version;
@@ -101,8 +98,6 @@ int main(int argc, char **argv)
 
         bzero(scanRans,PAC_MAX_BEAMS);
         bzero(scanIntes,PAC_MAX_BEAMS);
-        // ROS_INFO("Published.Spent %f.",ros::Time::now().toSec()-startTM);
-        // rt.sleep();
     }
     pthread_join(svr_thread_t,NULL);
     return 0;
@@ -110,7 +105,7 @@ int main(int argc, char **argv)
 
 void on_sigint_recved(int signo)
 {
-    std::cout << "Received signal:" << strsignal(signo) << std::endl;
+    ROS_INFO("Received signal:%s", strsignal(signo));
     ros::shutdown();
     if(lm_ptr!=nullptr) lm_ptr->disconnectFromLidar();
     exit(0);
@@ -119,7 +114,7 @@ void on_sigint_recved(int signo)
 void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,float* ranges,float* intens)
 {
     msg.header.frame_id = frameID;
-    // msg.header.stamp = ros::Time::now();
+    msg.header.stamp = ros::Time::now();
 
     msg.angle_min = angleMin;
     msg.angle_max = angleMax;
@@ -138,35 +133,56 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
 
 void getAllParams(string path)
 {
+    bool ret = false;
     string key="ScanTopic";
-    ros::param::get(path + key, scanTpcName);
+    ret = ros::param::get(path + key, scanTpcName);
+    if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),scanTpcName.c_str());
+    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),scanTpcName.c_str());
 
     key = "CtrlSrv";
-    ros::param::get(path + key, ctrlSrvName);
+    ret = ros::param::get(path + key, ctrlSrvName);
+    if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),ctrlSrvName.c_str());
+    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),ctrlSrvName.c_str());
 
     key = "StateTopic";
-    ros::param::get(path + key, stateTpcName);
+    ret = ros::param::get(path + key, stateTpcName);
+    if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),stateTpcName.c_str());
+    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),stateTpcName.c_str());
 
     key = "IP";
-    ros::param::get(path + key, lidarIP);
+    ret = ros::param::get(path + key, lidarIP);
+    if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),lidarIP.c_str());
+    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),lidarIP.c_str());
 
     key = "Port";
-    ros::param::get(path + key, lidarPort);
+    ret = ros::param::get(path + key, lidarPort);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),lidarPort);
+    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),lidarPort);
 
     key = "Speed";
-    ros::param::get(path + key, lidarSpeed);
+    ret = ros::param::get(path + key, lidarSpeed);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),lidarSpeed);
+    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),lidarSpeed);
 
     key = "DataCheck";
-    ros::param::get(path + key, checkData);
+    ret = ros::param::get(path + key, checkData);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),checkData);
+    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),checkData);
 
     key = "FrameID";
-    ros::param::get(path + key, frameID);
+    ret = ros::param::get(path + key, frameID);
+    if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),frameID.c_str());
+    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),frameID.c_str());
 
     key = "RangeMin";
-    ros::param::get(path + key, rangeMin);
+    ret = ros::param::get(path + key, rangeMin);
+    if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMin);
+    else ROS_INFO("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMin);
 
     key = "RangeMax";
-    ros::param::get(path + key, rangeMax);
+    ret = ros::param::get(path + key, rangeMax);
+    if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMax);
+    else ROS_INFO("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMax);
 }
 
 bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,
@@ -191,7 +207,8 @@ bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,
         break;
     }
     ROS_INFO("Received cmd to set LidarSpeed: %d Hz,DataChecked: %d.",req.lidarSpeed,req.dataCheck);
-    return (!lm_ptr->setupLidar(spd,dtType));
+    res.result = lm_ptr->setupLidar(spd,dtType);
+    return true;
 }            
 
 void* ctrl_srv_advertise_func(void* node_handle)
