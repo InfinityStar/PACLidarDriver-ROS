@@ -9,7 +9,7 @@
         <arg name="pac_lidar_state_topic" default="pacLidarState" />
         <arg name="pac_lidar_ctrl_srv"    default="pacLidarCtrl"  />
         <arg name="pac_lidar_frame_id"    default="world"         /> 
-        <arg name="pac_lidar_range_min"   default="0.05"          />
+        <arg name="pac_lidar_range_min"   default="0.00"          />
         <arg name="pac_lidar_range_max"   default="60.0"          />
         <!-- <arg name="pac_lidar_frame_id"    default="pac_lidar_link"/> -->
 
