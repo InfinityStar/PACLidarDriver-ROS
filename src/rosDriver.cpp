@@ -38,9 +38,6 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
 int main(int argc, char **argv)
 {
 
-    lidarManager lm(lidarIP,lidarPort);
-    lm_ptr = &lm;
-
     signal(SIGINT,  on_sigint_recved);
     signal(SIGQUIT, on_sigint_recved);
     signal(SIGTERM, on_sigint_recved);
@@ -49,6 +46,9 @@ int main(int argc, char **argv)
     ros::NodeHandle ros_nh;
     nodeFullName = ros::this_node::getName()+"/";
     getAllParams(nodeFullName);
+
+    lidarManager lm(lidarIP,lidarPort);
+    lm_ptr = &lm;
 
     ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>(scanTpcName,1);
     ros::Publisher statePub = ros_nh.advertise<paclidar_driver::LidarState>(stateTpcName,1);
