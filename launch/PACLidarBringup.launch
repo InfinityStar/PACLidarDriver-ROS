@@ -14,7 +14,7 @@
         <!-- <arg name="pac_lidar_frame_id"    default="pac_lidar_link"/> -->
 
         <!-- 启动雷达驱动节点 -->
-        <node name="driver_node"       pkg="paclidar_driver" type="driver_node">
+        <node name="driver_node"       pkg="paclidar_driver" type="driver_node" output="screen">
             <param name = "IP"         type = "string" value = "$(arg pac_lidar_ip)"         />
             <param name = "Port"       type = "int"    value = "$(arg pac_lidar_port)"       />
             <param name = "Speed"      type = "int"    value = "$(arg pac_lidar_speed)"      />
