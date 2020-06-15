@@ -124,6 +124,8 @@ private:
     */
     int reconnect2Lidar();
 
+    void pointsFilter(PacLidar::LidarData_t *points, size_t size);
+
 private:
     int lidarSockFD;
 

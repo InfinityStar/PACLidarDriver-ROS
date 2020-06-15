@@ -379,6 +379,7 @@ void lidarManager::capLidarData()
             if (dataAvalible)
             {
                 // DBG_INFO << "Got one full pkg." << T_RESET << endl;
+                pointsFilter(oneCircleData,sizeof(oneCircleData));
                 struct timespec ts;
                 timespec_get(&ts,TIME_UTC);
                 ts.tv_nsec += 10000000; //10ms
@@ -405,4 +406,10 @@ void lidarManager::msleep(uint32_t msec)
         usleep(1000);
         msec--;
     }
+}
+
+void lidarManager::pointsFilter(PacLidar::LidarData_t *points, size_t size)
+{
+    if(size>(5042*sizeof(PacLidar::LidarData_t)))
+        points[5042].part1 = 0;
 }
