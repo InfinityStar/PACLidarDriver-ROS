@@ -21,7 +21,7 @@ class lidarManager
 {
 public:
     lidarManager() = default;
-    lidarManager(std::string ip = "192.168.1.199", uint16_t port = 5000);
+    lidarManager(std::string ip = "192.168.1.199", uint16_t port = 5000, std::string name="Default");
     lidarManager(lidarManager&) = delete;
     ~lidarManager();
 
@@ -131,6 +131,7 @@ private:
 
     uint16_t lidarcmd;
 
+    std::string lidarName;
     sockaddr_in *lidarSockAddr;
 
     pthread_t dataReceiver;

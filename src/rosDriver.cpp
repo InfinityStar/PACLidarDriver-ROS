@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     nodeFullName = ros::this_node::getName()+"/";
     getAllParams(nodeFullName);
 
-    lidarManager lm(lidarIP,lidarPort);
+    lidarManager lm(lidarIP,lidarPort,ros::this_node::getName());
     lm_ptr = &lm;
 
     ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>(scanTpcName,1);
