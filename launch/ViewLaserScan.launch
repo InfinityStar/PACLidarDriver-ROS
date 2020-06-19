@@ -1,0 +1,32 @@
+<launch>
+    <group ns="AODT">
+        <!-- 可选的参数 -->
+        <arg name="pac_lidar_ip"          default="192.168.1.199" />
+        <arg name="pac_lidar_port"        default="5000"          />
+        <arg name="pac_lidar_speed"       default="10"            />
+        <arg name="pac_lidar_data_check"  default="true"          />
+        <arg name="pac_lidar_scan_topic"  default="/scan"         />
+        <arg name="pac_lidar_state_topic" default="pacLidarState" />
+        <arg name="pac_lidar_ctrl_srv"    default="pacLidarCtrl"  />
+        <arg name="pac_lidar_frame_id"    default="world"         /> 
+        <arg name="pac_lidar_range_min"   default="0.00"          />
+        <arg name="pac_lidar_range_max"   default="60.0"          />
+
+        <!-- 启动雷达驱动节点 -->
+        <node name="driver_node"       pkg="paclidar_driver" type="driver_node" output="screen" required="true">
+            <param name = "IP"         type = "string" value = "$(arg pac_lidar_ip)"         />
+            <param name = "Port"       type = "int"    value = "$(arg pac_lidar_port)"       />
+            <param name = "Speed"      type = "int"    value = "$(arg pac_lidar_speed)"      />
+            <param name = "DataCheck"  type = "bool"   value = "$(arg pac_lidar_data_check)" />
+            <param name = "ScanTopic"  type = "string" value = "$(arg pac_lidar_scan_topic)" />
+            <param name = "StateTopic" type = "string" value = "$(arg pac_lidar_state_topic)"/>
+            <param name = "CtrlSrv"    type = "string" value = "$(arg pac_lidar_ctrl_srv)"   />
+            <param name = "FrameID"    type = "string" value = "$(arg pac_lidar_frame_id)"   />
+            <param name = "RangeMin"   type = "double" value = "$(arg pac_lidar_range_min)"  />
+            <param name = "RangeMax"   type = "double" value = "$(arg pac_lidar_range_max)"  />
+        </node>
+
+        <!-- 运行rviz可视化界面 -->
+        <node name="rviz" pkg="rviz" type="rviz" args="-d $(find paclidar_driver)/config/ViewLaserScan.rviz" required="true" />
+    </group>
+</launch>
