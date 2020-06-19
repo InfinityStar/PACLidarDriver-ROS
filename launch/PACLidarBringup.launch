@@ -8,13 +8,12 @@
         <arg name="pac_lidar_scan_topic"  default="/scan"         />
         <arg name="pac_lidar_state_topic" default="pacLidarState" />
         <arg name="pac_lidar_ctrl_srv"    default="pacLidarCtrl"  />
-        <arg name="pac_lidar_frame_id"    default="world"         /> 
+        <arg name="pac_lidar_frame_id"    default="paclidar_link" /> 
         <arg name="pac_lidar_range_min"   default="0.00"          />
         <arg name="pac_lidar_range_max"   default="60.0"          />
-        <!-- <arg name="pac_lidar_frame_id"    default="pac_lidar_link"/> -->
 
         <!-- 启动雷达驱动节点 -->
-        <node name="driver_node"       pkg="paclidar_driver" type="driver_node" output="screen">
+        <node name="driver_node"       pkg="paclidar_driver" type="driver_node" output="screen" required="true">
             <param name = "IP"         type = "string" value = "$(arg pac_lidar_ip)"         />
             <param name = "Port"       type = "int"    value = "$(arg pac_lidar_port)"       />
             <param name = "Speed"      type = "int"    value = "$(arg pac_lidar_speed)"      />
@@ -26,5 +25,9 @@
             <param name = "RangeMin"   type = "double" value = "$(arg pac_lidar_range_min)"  />
             <param name = "RangeMax"   type = "double" value = "$(arg pac_lidar_range_max)"  />
         </node>
+
+        <!-- 发布tf变换 -->
+        <node pkg="tf" type="static_transform_publisher" name="base_link_to_paclidar"
+        args="0 0 0.62 0 0 0 base_link paclidar_link 100" />
     </group>
 </launch>
