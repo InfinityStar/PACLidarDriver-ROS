@@ -26,7 +26,9 @@
 #define PAC_MAX_BEAMS        5760
 #define PAC_ANGLE_RESOLUTION 0.0625
 
+#ifndef DEGTORAD
 #define DEGTORAD(x) (x * M_PI / 180.0)
+#endif//DEGTORAD
 
 /*Using for terminal text color*/
 #define T_RESET   "\033[0m"
