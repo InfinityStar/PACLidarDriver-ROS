@@ -87,7 +87,7 @@ int main(int argc, char **argv)
         double startTM = ros::Time::now().toSec();
         lm.getLidarScanByAngle(scanRans, scanIntes,0,360);
         publishLaserScanMsg(scanPub,scanMsg,ros::Time::now().toSec()-startTM,scanRans,scanIntes);
-        if(scanMsg.scan_time>0.15) ROS_ERROR("Scan time over than 0.15s : %f",scanMsg.scan_time);
+        if(scanMsg.scan_time>0.5) ROS_ERROR("Scan time over than 0.5s : %f",scanMsg.scan_time);
 
         lm.getLidarState(dev_state);
         stateMsg.firmware_version = dev_state.version;
