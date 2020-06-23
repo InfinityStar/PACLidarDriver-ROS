@@ -9,6 +9,7 @@
 #include <paclidar_driver/LidarState.h>
 
 using namespace std;
+using namespace PacLidar;
 
 static string nodeFullName = "pac_lidar_node";
 static string scanTpcName  = "scan";
@@ -34,6 +35,7 @@ void getAllParams(string path);
 void on_sigint_recved(int signo);
 void* ctrl_srv_advertise_func(void* node_handle);
 void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,float* ranges,float* intens);
+void lidarConnectionChanged(int state);
 
 int main(int argc, char **argv)
 {
@@ -49,6 +51,7 @@ int main(int argc, char **argv)
 
     lidarManager lm(lidarIP,lidarPort,ros::this_node::getName());
     lm_ptr = &lm;
+    lm.registerConnectionStateChangedCallback(&lidarConnectionChanged);
 
     ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>(scanTpcName,1);
     ros::Publisher statePub = ros_nh.advertise<paclidar_driver::LidarState>(stateTpcName,1);
@@ -217,4 +220,23 @@ void* ctrl_srv_advertise_func(void* node_handle)
     ros::ServiceServer ctrlSvr = nh->advertiseService(ctrlSrvName,on_srv_called);
     ros::spin();
     ctrlSvr.shutdown();
+}
+
+void lidarConnectionChanged(int state)
+{
+    switch (state)
+    {
+    case lidarManager::Connected:
+        ROS_INFO("Lidar Connection is ready now.");
+        break;
+    case lidarManager::Connecting:
+        ROS_INFO("Trying to connect to lidar...");
+        break;
+    case lidarManager::Disconnected:
+        ROS_ERROR("Lidar Connetion is unavalible.");
+        break;
+    default:
+        ROS_INFO("Lidar Connetion is unknown.");
+        break;
+    }
 }

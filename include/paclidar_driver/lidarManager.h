@@ -10,12 +10,14 @@
 #include <fcntl.h>
 #include "PACLidarCommon.h"
 
-#define __DEBUG
+// #define __DEBUG
 #ifdef __DEBUG
 #define DBG_INFO cout
 #else
-#define DGB_INFO 0 && cout
+#define DBG_INFO 0 && cout
 #endif
+namespace PacLidar
+{
 
 class lidarManager
 {
@@ -98,6 +100,14 @@ public:
     */
     void capLidarData();
 
+    enum{
+        Connecting,
+        Connected,
+        Disconnected
+    };
+
+    void registerConnectionStateChangedCallback(void (*callback)(int));
+
 private:
     /* 
  * @desc:直接给雷达发送命令,不论其是否在接受数据
@@ -155,6 +165,10 @@ private:
     pthread_mutex_t mutex;
     pthread_mutexattr_t mutexattr;
     pthread_cond_t cond_CopyPkg;
+private:
+    void (*onConnectionStateChanged)(int);
 };
+
+}//namespace PacLidar
 
 #endif //__LIDAR_MANAGER_H__

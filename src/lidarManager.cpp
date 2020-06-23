@@ -3,6 +3,7 @@
 #define BEAM_ACCURACY 2
 
 using namespace std;
+using namespace PacLidar;
 
 lidarManager::lidarManager(string ip, uint16_t port, string name)
 {
@@ -15,7 +16,7 @@ lidarManager::lidarManager(string ip, uint16_t port, string name)
     lidarName = name + "(" + ip + ":" + to_string(port) +")";
     lidarSockAddr = new sockaddr_in();
     if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        cerr << T_RED << "["<<lidarName<<"]Error : Fata:Create socket failed:" << strerror(errno) << T_RESET << endl;
+        DBG_INFO << T_RED << "["<<lidarName<<"]Error : Fata:Create socket failed:" << strerror(errno) << T_RESET << endl;
         exit(-1);
     }
 
@@ -32,6 +33,8 @@ lidarManager::lidarManager(string ip, uint16_t port, string name)
     pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK);
     pthread_mutex_init(&mutex, &mutexattr);
     pthread_cond_init(&cond_CopyPkg,NULL);
+
+    onConnectionStateChanged = nullptr;
 }
 
 lidarManager::~lidarManager()
@@ -50,10 +53,12 @@ lidarManager::~lidarManager()
 int lidarManager::connect2Lidar(uint32_t timeout_sec)
 {
     DBG_INFO << T_BLUE << "["<<lidarName<<"]Connecting to lidar..." << T_RESET << endl;
+    if(onConnectionStateChanged!=nullptr)
+        onConnectionStateChanged(Connecting);
     bool foreverLoop = !timeout_sec;
     if(connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr))==-1)
     {
-        cerr << T_RED << "["<<lidarName<<"]Error : Failed to connect to lidar : " << strerror(errno) << T_RESET << endl
+        DBG_INFO << T_RED << "["<<lidarName<<"]Error : Failed to connect to lidar : " << strerror(errno) << T_RESET << endl
              << T_BLUE << "Retrying..." << T_RESET << endl;
         sleep(1);
         int flag = fcntl(lidarSockFD, F_GETFL);
@@ -63,7 +68,7 @@ int lidarManager::connect2Lidar(uint32_t timeout_sec)
         while (lidarSockFD > 0 && connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr)) == -1)
         {
             if (errno != EAGAIN && errno!=EINPROGRESS && errno!=EALREADY) 
-                cerr << T_RED << "["<<lidarName<<"]Error : Failed to connect to lidar : " << strerror(errno) << T_RESET << endl
+                DBG_INFO << T_RED << "["<<lidarName<<"]Error : Failed to connect to lidar : " << strerror(errno) << T_RESET << endl
                 <<T_BLUE<<"Retrying..."<< T_RESET << endl;
             sleep(1);
             if (!foreverLoop)
@@ -73,7 +78,7 @@ int lidarManager::connect2Lidar(uint32_t timeout_sec)
                     errno = ETIMEDOUT;
                     if (lidarSockFD > 0)
                         fcntl(lidarSockFD, F_SETFL, flag);
-                    cerr << T_RED << "["<<lidarName<<"]Error : Connect to lidar timeout : " << strerror(errno) << T_RESET << endl;
+                    DBG_INFO << T_RED << "["<<lidarName<<"]Error : Connect to lidar timeout : " << strerror(errno) << T_RESET << endl;
                     return -1;
                 }
                 else
@@ -83,8 +88,9 @@ int lidarManager::connect2Lidar(uint32_t timeout_sec)
         if (lidarSockFD > 0)
             fcntl(lidarSockFD, F_SETFL, flag);
     }
-
     DBG_INFO << T_GREEN << "["<<lidarName<<"]The connection has been successful." << T_RESET << endl;
+    if(onConnectionStateChanged!=nullptr)
+        onConnectionStateChanged(Connected);
     return 0;
 }
 
@@ -92,7 +98,7 @@ int lidarManager::reconnect2Lidar()
 {
     close(lidarSockFD);
     if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        cerr << T_RED << "["<<lidarName<<"]Fata : Failed to reset socket fd : " << strerror(errno) << T_RESET << endl;
+        DBG_INFO << T_RED << "["<<lidarName<<"]Fata : Failed to reset socket fd : " << strerror(errno) << T_RESET << endl;
         exit(-1);
     }
     setsockopt(lidarSockFD,SOL_SOCKET,SO_RCVTIMEO,&rcvtimeout,sizeof(rcvtimeout));
@@ -103,8 +109,12 @@ int lidarManager::disconnectFromLidar()
 {
     if (pthread_kill(dataReceiver,0)==0)
         stopLidar();
-    if (lidarSockFD > 0)
-        return close(lidarSockFD);
+    if (lidarSockFD > 0){
+        close(lidarSockFD);
+        if(onConnectionStateChanged!=nullptr)
+            onConnectionStateChanged(Disconnected);
+        return 0;
+    }
     else
         return 0;
 }
@@ -123,7 +133,7 @@ int lidarManager::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data
     if (send_cmd_to_lidar(PacLidar::CTRL_START) < 0)
         return -1;
 
-    if(isCap == false)
+    if(pthread_self() != dataReceiver)
     {
         isCap = true;
         pthread_create(&dataReceiver, NULL, dataRecvFunc, (void *)this);
@@ -140,7 +150,8 @@ int lidarManager::stopLidar()
 {
     if (pthread_kill(dataReceiver,0)==0){
         isCap = false;
-        pthread_join(dataReceiver, NULL);
+        if(pthread_self()!=dataReceiver)
+            pthread_join(dataReceiver, NULL);
     }
     if(send_cmd_to_lidar(PacLidar::CTRL_STOP)<0)
         return -1;
@@ -153,7 +164,7 @@ int lidarManager::setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_ty
     lidarParam.speed = speed;
     lidarParam.dataType = data_type;
     if(send_cmd_to_lidar(speed)==-1 || send_cmd_to_lidar(data_type)==-1){
-        cerr<<T_RED<<"["<<lidarName<<"]Error : Setup lidar failed : "<<strerror(errno)<<T_RESET << endl;
+        DBG_INFO<<T_RED<<"["<<lidarName<<"]Error : Setup lidar failed : "<<strerror(errno)<<T_RESET << endl;
         return -1;
     }
     return 0;
@@ -219,7 +230,7 @@ int lidarManager::send_cmd_to_lidar(uint16_t cmd)
     uint16_t netCMD = htons(cmd);
     int rtn = send(lidarSockFD, &netCMD, sizeof(netCMD), 0);
     if (rtn < 0 || rtn != sizeof(netCMD)){
-        cerr << T_RED << "["<<lidarName<<"]Error : Send cmd failed with errno "<<errno<<" : "<< strerror(errno) << T_RESET << endl;
+        DBG_INFO << T_RED << "["<<lidarName<<"]Error : Send cmd failed with errno "<<errno<<" : "<< strerror(errno) << T_RESET << endl;
         if(errno == ECONNRESET){ //reset by peer
             DBG_INFO << T_BLUE <<"["<<lidarName<<"]Connection reset by peer,trying to reconnect it..."<<T_RESET << endl;
             reconnect2Lidar();
@@ -280,15 +291,19 @@ void lidarManager::capLidarData()
             else if (recvedNum == 0)
             {
                 DBG_INFO << T_BLUE << "["<<lidarName<<"]Connection reset by peer,Trying to reconnect it..." << T_RESET << endl;
+                if(onConnectionStateChanged)
+                    onConnectionStateChanged(Disconnected);
                 reconnect2Lidar();
                 startupLidar();
             }
             else
             {
-                cerr << T_RED << "["<<lidarName<<"]Error : Receive msg from lidar failed with errno:"<< errno <<": "<< strerror(errno) << T_RESET << endl;
+                DBG_INFO << T_RED << "["<<lidarName<<"]Error : Receive msg from lidar failed with errno:"<< errno <<": "<< strerror(errno) << T_RESET << endl;
                 if(errno == EAGAIN)
                 {
-                    cerr<< T_RED <<"["<<lidarName<<"]Error : Server may be down,trying to reconnect it..."<<T_RESET << endl;
+                    DBG_INFO<< T_RED <<"["<<lidarName<<"]Error : Server may be down,trying to reconnect it..."<<T_RESET << endl;
+                    if(onConnectionStateChanged)
+                        onConnectionStateChanged(Disconnected);
                     reconnect2Lidar();
                     startupLidar();
                 }
@@ -413,4 +428,9 @@ void lidarManager::pointsFilter(PacLidar::LidarData_t *points, size_t size)
 {
     if(size>(5042*sizeof(PacLidar::LidarData_t)))
         points[5042].part1 = 0;
+}
+
+void lidarManager::registerConnectionStateChangedCallback(void (*callback)(int))
+{
+    onConnectionStateChanged = callback;
 }
