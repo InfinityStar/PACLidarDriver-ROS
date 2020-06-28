@@ -139,8 +139,6 @@ private:
 private:
     int lidarSockFD;
 
-    uint16_t lidarcmd;
-
     std::string lidarName;
     sockaddr_in *lidarSockAddr;
 
