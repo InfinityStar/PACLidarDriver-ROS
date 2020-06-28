@@ -19,13 +19,13 @@
 namespace PacLidar
 {
 
-class lidarManager
+class LidarLinker
 {
 public:
-    lidarManager() = default;
-    lidarManager(std::string ip = "192.168.1.199", uint16_t port = 5000, std::string name="Default");
-    lidarManager(lidarManager&) = delete;
-    ~lidarManager();
+    LidarLinker() = default;
+    LidarLinker(std::string ip = "192.168.1.199", uint16_t port = 5000, std::string name="Default");
+    LidarLinker(LidarLinker&) = delete;
+    ~LidarLinker();
 
 public:
     /*
@@ -106,6 +106,11 @@ public:
         Disconnected
     };
 
+    /* 
+    * @desc：注册雷达状态发生改变时的回调函数
+    * @params：回调函数;回调函数的参数为雷达的状态
+    * @return: null
+    */
     void registerConnectionStateChangedCallback(void (*callback)(int));
 
 private:

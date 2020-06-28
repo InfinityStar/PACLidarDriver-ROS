@@ -1,6 +1,6 @@
 #include <iostream>
 #include <sys/signal.h>
-#include "lidarManager.h"
+#include "lidarlinker.h"
 #include <fcntl.h>
 
 #include <ros/ros.h>
@@ -28,7 +28,7 @@ static float angleMin       = 0;
 static float angleMax       = -M_PI+DEGTORAD(PAC_ANGLE_RESOLUTION);
 static float angleIncrement = DEGTORAD(PAC_ANGLE_RESOLUTION);
 
-lidarManager *lm_ptr = nullptr;
+LidarLinker *lm_ptr = nullptr;
 pthread_t svr_thread_t;
 
 void getAllParams(string path);
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
     nodeFullName = ros::this_node::getName()+"/";
     getAllParams(nodeFullName);
 
-    lidarManager lm(lidarIP,lidarPort,ros::this_node::getName());
+    LidarLinker lm(lidarIP,lidarPort,ros::this_node::getName());
     lm_ptr = &lm;
     lm.registerConnectionStateChangedCallback(&lidarConnectionChanged);
 
@@ -226,13 +226,13 @@ void lidarConnectionChanged(int state)
 {
     switch (state)
     {
-    case lidarManager::Connected:
+    case LidarLinker::Connected:
         ROS_INFO("Lidar Connection is ready now.");
         break;
-    case lidarManager::Connecting:
+    case LidarLinker::Connecting:
         ROS_INFO("Trying to connect to lidar...");
         break;
-    case lidarManager::Disconnected:
+    case LidarLinker::Disconnected:
         ROS_ERROR("Lidar Connetion is unavalible.");
         break;
     default:

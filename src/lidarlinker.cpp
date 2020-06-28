@@ -1,11 +1,11 @@
-#include "lidarManager.h"
+#include "lidarlinker.h"
 
 #define BEAM_ACCURACY 2
 
 using namespace std;
 using namespace PacLidar;
 
-lidarManager::lidarManager(string ip, uint16_t port, string name)
+LidarLinker::LidarLinker(string ip, uint16_t port, string name)
 {
 
     lidarParam.speed = PacLidar::SET_SPEED_HZ_10;
@@ -37,7 +37,7 @@ lidarManager::lidarManager(string ip, uint16_t port, string name)
     onConnectionStateChanged = nullptr;
 }
 
-lidarManager::~lidarManager()
+LidarLinker::~LidarLinker()
 {
     DBG_INFO << T_BLUE << "["<<lidarName<<"]Disconnecting from lidar..." << T_RESET << endl;
     if(disconnectFromLidar()==0);
@@ -50,7 +50,7 @@ lidarManager::~lidarManager()
     pthread_cond_destroy(&cond_CopyPkg);
 }
 
-int lidarManager::connect2Lidar(uint32_t timeout_sec)
+int LidarLinker::connect2Lidar(uint32_t timeout_sec)
 {
     DBG_INFO << T_BLUE << "["<<lidarName<<"]Connecting to lidar..." << T_RESET << endl;
     if(onConnectionStateChanged!=nullptr)
@@ -94,7 +94,7 @@ int lidarManager::connect2Lidar(uint32_t timeout_sec)
     return 0;
 }
 
-int lidarManager::reconnect2Lidar()
+int LidarLinker::reconnect2Lidar()
 {
     close(lidarSockFD);
     if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -105,7 +105,7 @@ int lidarManager::reconnect2Lidar()
     return connect2Lidar();
 }
 
-int lidarManager::disconnectFromLidar()
+int LidarLinker::disconnectFromLidar()
 {
     if (pthread_kill(dataReceiver,0)==0)
         stopLidar();
@@ -119,12 +119,12 @@ int lidarManager::disconnectFromLidar()
         return 0;
 }
 
-int lidarManager::startupLidar()
+int LidarLinker::startupLidar()
 {
     return startupLidar(lidarParam.speed,lidarParam.dataType);
 }
 
-int lidarManager::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_type)
+int LidarLinker::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_type)
 {
     lidarParam.dataType = data_type;
     lidarParam.speed = speed;
@@ -146,7 +146,7 @@ int lidarManager::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data
     return 0;
 }
 
-int lidarManager::stopLidar()
+int LidarLinker::stopLidar()
 {
     if (pthread_kill(dataReceiver,0)==0){
         isCap = false;
@@ -159,7 +159,7 @@ int lidarManager::stopLidar()
         return 0;
 }
 
-int lidarManager::setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type)
+int LidarLinker::setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type)
 {
     lidarParam.speed = speed;
     lidarParam.dataType = data_type;
@@ -170,7 +170,7 @@ int lidarManager::setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_ty
     return 0;
 }
 
-int lidarManager::getLidarScanByBeam(float *ranges, float *intensities, unsigned start_beam, unsigned stop_beam)
+int LidarLinker::getLidarScanByBeam(float *ranges, float *intensities, unsigned start_beam, unsigned stop_beam)
 {
     assert(start_beam >= 0);
     assert(stop_beam <= PAC_MAX_BEAMS - 1);
@@ -204,7 +204,7 @@ int lidarManager::getLidarScanByBeam(float *ranges, float *intensities, unsigned
 }
 
 
-int lidarManager::getLidarScanByAngle(float *ranges, float *intensities, float start_angle, float stop_angle)
+int LidarLinker::getLidarScanByAngle(float *ranges, float *intensities, float start_angle, float stop_angle)
 {
     unsigned start_beam = start_angle/PAC_ANGLE_RESOLUTION;
     unsigned stop_beam = stop_angle/PAC_ANGLE_RESOLUTION;
@@ -212,7 +212,7 @@ int lidarManager::getLidarScanByAngle(float *ranges, float *intensities, float s
     return getLidarScanByBeam(ranges,intensities,start_beam,stop_beam);
 }
 
-int lidarManager::getLidarState(PacLidar::lidarState_t &state)
+int LidarLinker::getLidarState(PacLidar::lidarState_t &state)
 {
     if (lidarStatus.id != 0)
     {
@@ -223,7 +223,7 @@ int lidarManager::getLidarState(PacLidar::lidarState_t &state)
         return -1;
 }
 
-int lidarManager::send_cmd_to_lidar(uint16_t cmd)
+int LidarLinker::send_cmd_to_lidar(uint16_t cmd)
 {
     if (lidarSockFD < 0)
         return -1;
@@ -243,13 +243,13 @@ int lidarManager::send_cmd_to_lidar(uint16_t cmd)
     return rtn;
 }
 
-void *lidarManager::dataRecvFunc(void *recver)
+void *LidarLinker::dataRecvFunc(void *recver)
 {
-    lidarManager *rcvr = (lidarManager *)recver;
+    LidarLinker *rcvr = (LidarLinker *)recver;
     rcvr->capLidarData();
 }
 
-void lidarManager::capLidarData()
+void LidarLinker::capLidarData()
 {
     if (lidarSockFD < 0)
         return;
@@ -415,7 +415,7 @@ void lidarManager::capLidarData()
     pthread_mutex_unlock(&mutex);
 }
 
-void lidarManager::msleep(uint32_t msec)
+void LidarLinker::msleep(uint32_t msec)
 {
     while (msec > 0)
     {
@@ -424,13 +424,13 @@ void lidarManager::msleep(uint32_t msec)
     }
 }
 
-void lidarManager::pointsFilter(PacLidar::LidarData_t *points, size_t size)
+void LidarLinker::pointsFilter(PacLidar::LidarData_t *points, size_t size)
 {
     if(size>(5042*sizeof(PacLidar::LidarData_t)))
         points[5042].part1 = 0;
 }
 
-void lidarManager::registerConnectionStateChangedCallback(void (*callback)(int))
+void LidarLinker::registerConnectionStateChangedCallback(void (*callback)(int))
 {
     onConnectionStateChanged = callback;
 }

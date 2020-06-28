@@ -133,7 +133,7 @@ include_directories(
 
 set(SRC
 src/rosDriver.cpp
-src/lidarManager.cpp)
+src/lidarlinker.cpp)
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
