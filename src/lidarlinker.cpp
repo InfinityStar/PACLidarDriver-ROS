@@ -1,7 +1,5 @@
 #include "lidarlinker.h"
 
-#define BEAM_ACCURACY 2
-
 using namespace std;
 using namespace PacLidar;
 
