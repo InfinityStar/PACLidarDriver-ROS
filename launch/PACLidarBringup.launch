@@ -1,33 +1,34 @@
 <launch>
-    <group ns="AODT">
         <!-- 可选的参数 -->
         <arg name="pac_lidar_ip"          default="192.168.1.199" />
         <arg name="pac_lidar_port"        default="5000"          />
-        <arg name="pac_lidar_speed"       default="10"            />
-        <arg name="pac_lidar_data_check"  default="true"          />
+        <arg name="pac_lidar_speed"       default="10"            /><!--10 15 20-->
+        <arg name="pac_lidar_data_check"  default="true"          /><!--ture OR flase-->
         <arg name="pac_lidar_scan_topic"  default="/scan"         />
         <arg name="pac_lidar_state_topic" default="pacLidarState" />
         <arg name="pac_lidar_ctrl_srv"    default="pacLidarCtrl"  />
         <arg name="pac_lidar_frame_id"    default="paclidar_link" /> 
+        <arg name="base_frame_id"         default="base_link"     />
         <arg name="pac_lidar_range_min"   default="0.00"          />
         <arg name="pac_lidar_range_max"   default="60.0"          />
+        <arg name="point_tear_optimize"   default = "false"       />
 
         <!-- 启动雷达驱动节点 -->
-        <node name="driver_node"       pkg="paclidar_driver" type="driver_node" output="screen" required="true">
-            <param name = "IP"         type = "string" value = "$(arg pac_lidar_ip)"         />
-            <param name = "Port"       type = "int"    value = "$(arg pac_lidar_port)"       />
-            <param name = "Speed"      type = "int"    value = "$(arg pac_lidar_speed)"      />
-            <param name = "DataCheck"  type = "bool"   value = "$(arg pac_lidar_data_check)" />
-            <param name = "ScanTopic"  type = "string" value = "$(arg pac_lidar_scan_topic)" />
-            <param name = "StateTopic" type = "string" value = "$(arg pac_lidar_state_topic)"/>
-            <param name = "CtrlSrv"    type = "string" value = "$(arg pac_lidar_ctrl_srv)"   />
-            <param name = "FrameID"    type = "string" value = "$(arg pac_lidar_frame_id)"   />
-            <param name = "RangeMin"   type = "double" value = "$(arg pac_lidar_range_min)"  />
-            <param name = "RangeMax"   type = "double" value = "$(arg pac_lidar_range_max)"  />
+        <node name="driver_node" pkg="paclidar_driver" type="driver_node" output="screen" required="true">
+            <param name = "IP"           type = "string" value = "$(arg pac_lidar_ip)"         />
+            <param name = "Port"         type = "int"    value = "$(arg pac_lidar_port)"       />
+            <param name = "Speed"        type = "int"    value = "$(arg pac_lidar_speed)"      />
+            <param name = "DataCheck"    type = "bool"   value = "$(arg pac_lidar_data_check)" />
+            <param name = "ScanTopic"    type = "string" value = "$(arg pac_lidar_scan_topic)" />
+            <param name = "StateTopic"   type = "string" value = "$(arg pac_lidar_state_topic)"/>
+            <param name = "CtrlSrv"      type = "string" value = "$(arg pac_lidar_ctrl_srv)"   />
+            <param name = "FrameID"      type = "string" value = "$(arg pac_lidar_frame_id)"   />
+            <param name = "RangeMin"     type = "double" value = "$(arg pac_lidar_range_min)"  />
+            <param name = "RangeMax"     type = "double" value = "$(arg pac_lidar_range_max)"  />
+            <param name = "TearOptimize" type = "bool"   value = "$(arg point_tear_optimize)"  />
         </node>
 
         <!-- 发布tf变换 -->
         <node pkg="tf" type="static_transform_publisher" name="base_link_to_paclidar"
-        args="0 0 0.62 0 0 0 base_link paclidar_link 100" />
-    </group>
+        args="0 0 0.62 0 0 0 $(arg base_frame_id) $(arg pac_lidar_frame_id) 100" />
 </launch>

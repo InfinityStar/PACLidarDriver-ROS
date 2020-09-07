@@ -121,9 +121,17 @@ public:
     * @brief 注册雷达状态发生改变时的回调函数
     * @param 回调函数;回调函数的参数为雷达的状态
     * @return  null
-    * @note 此类以设置断线重连，请勿在此函数中操作链接
+    * @note 此类已设置断线重连，请勿在此函数中操作链接
     */
     void registerConnectionStateChangedCallback(void (*callback)(int));
+
+    /** 
+    * @brief 撕裂优化：优化雷达绕z轴旋转时，点云图出现线的撕裂
+    * @param 开关;
+    * @return  null
+    * @note 此方法提供修复，但是会丢失315-320度的数据
+    */
+    inline void setTearOptimize(bool available){isHideBroken = available;}
 
 private:
     /** 
@@ -176,6 +184,8 @@ private:
     struct timeval rcvtimeout;
 
     volatile bool isCap;
+
+    volatile bool isHideBroken;
 
     pthread_mutex_t mutex;
     pthread_mutexattr_t mutexattr;

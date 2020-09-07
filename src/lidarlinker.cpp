@@ -3,24 +3,26 @@
 using namespace std;
 using namespace PacLidar;
 
-LidarLinker::LidarLinker(string ip, uint16_t port, string name)
+LidarLinker::LidarLinker(string ip, uint16_t port, string name):
+    isHideBroken(false),
+    isCap(false),
+    dataReceiver(0)
 {
 
     lidarParam.speed = PacLidar::SET_SPEED_HZ_10;
     lidarParam.dataType = PacLidar::SET_DATA_CHECKED;
-    dataReceiver = 0;
-    isCap = false;
 
-    lidarName = name + "(" + ip + ":" + to_string(port) +")";
+    lidarName = name + "(" + ip + ":" + to_string(port) + ")";
     lidarSockAddr = new sockaddr_in();
-    if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        DBG_INFO << T_RED << "["<<lidarName<<"]Error : Fata:Create socket failed:" << strerror(errno) << T_RESET << endl;
+    if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        DBG_INFO << T_RED << "[" << lidarName << "]Error : Fata:Create socket failed:" << strerror(errno) << T_RESET << endl;
         exit(-1);
     }
 
-    rcvtimeout.tv_sec  = 3;
+    rcvtimeout.tv_sec = 3;
     rcvtimeout.tv_usec = 0;
-    setsockopt(lidarSockFD,SOL_SOCKET,SO_RCVTIMEO,&rcvtimeout,sizeof(rcvtimeout));
+    setsockopt(lidarSockFD, SOL_SOCKET, SO_RCVTIMEO, &rcvtimeout, sizeof(rcvtimeout));
 
     bzero(lidarSockAddr, sizeof(struct sockaddr_in));
     lidarSockAddr->sin_family = AF_INET;
@@ -30,16 +32,17 @@ LidarLinker::LidarLinker(string ip, uint16_t port, string name)
     pthread_mutexattr_init(&mutexattr);
     pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK);
     pthread_mutex_init(&mutex, &mutexattr);
-    pthread_cond_init(&cond_CopyPkg,NULL);
+    pthread_cond_init(&cond_CopyPkg, NULL);
 
     onConnectionStateChanged = nullptr;
 }
 
 LidarLinker::~LidarLinker()
 {
-    DBG_INFO << T_BLUE << "["<<lidarName<<"]Disconnecting from lidar..." << T_RESET << endl;
-    if(disconnectFromLidar()==0);
-        DBG_INFO << T_GREEN << "["<<lidarName<<"]Disconnected from lidar." << T_RESET << endl;
+    DBG_INFO << T_BLUE << "[" << lidarName << "]Disconnecting from lidar..." << T_RESET << endl;
+    if (disconnectFromLidar() == 0)
+        ;
+    DBG_INFO << T_GREEN << "[" << lidarName << "]Disconnected from lidar." << T_RESET << endl;
 
     if (lidarSockAddr != nullptr)
         delete lidarSockAddr;
@@ -50,14 +53,14 @@ LidarLinker::~LidarLinker()
 
 int LidarLinker::connect2Lidar(uint32_t timeout_sec)
 {
-    DBG_INFO << T_BLUE << "["<<lidarName<<"]Connecting to lidar..." << T_RESET << endl;
-    if(onConnectionStateChanged!=nullptr)
+    DBG_INFO << T_BLUE << "[" << lidarName << "]Connecting to lidar..." << T_RESET << endl;
+    if (onConnectionStateChanged != nullptr)
         onConnectionStateChanged(Connecting);
     bool foreverLoop = !timeout_sec;
-    if(connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr))==-1)
+    if (connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr)) == -1)
     {
-        DBG_INFO << T_RED << "["<<lidarName<<"]Error : Failed to connect to lidar : " << strerror(errno) << T_RESET << endl
-             << T_BLUE << "Retrying..." << T_RESET << endl;
+        DBG_INFO << T_RED << "[" << lidarName << "]Error : Failed to connect to lidar : " << strerror(errno) << T_RESET << endl
+                 << T_BLUE << "Retrying..." << T_RESET << endl;
         sleep(1);
         int flag = fcntl(lidarSockFD, F_GETFL);
         fcntl(lidarSockFD, F_SETFL, flag | O_NONBLOCK);
@@ -65,9 +68,9 @@ int LidarLinker::connect2Lidar(uint32_t timeout_sec)
 
         while (lidarSockFD > 0 && connect(lidarSockFD, (sockaddr *)lidarSockAddr, sizeof(struct sockaddr)) == -1)
         {
-            if (errno != EAGAIN && errno!=EINPROGRESS && errno!=EALREADY) 
-                DBG_INFO << T_RED << "["<<lidarName<<"]Error : Failed to connect to lidar : " << strerror(errno) << T_RESET << endl
-                <<T_BLUE<<"Retrying..."<< T_RESET << endl;
+            if (errno != EAGAIN && errno != EINPROGRESS && errno != EALREADY)
+                DBG_INFO << T_RED << "[" << lidarName << "]Error : Failed to connect to lidar : " << strerror(errno) << T_RESET << endl
+                         << T_BLUE << "Retrying..." << T_RESET << endl;
             sleep(1);
             if (!foreverLoop)
             {
@@ -76,7 +79,7 @@ int LidarLinker::connect2Lidar(uint32_t timeout_sec)
                     errno = ETIMEDOUT;
                     if (lidarSockFD > 0)
                         fcntl(lidarSockFD, F_SETFL, flag);
-                    DBG_INFO << T_RED << "["<<lidarName<<"]Error : Connect to lidar timeout : " << strerror(errno) << T_RESET << endl;
+                    DBG_INFO << T_RED << "[" << lidarName << "]Error : Connect to lidar timeout : " << strerror(errno) << T_RESET << endl;
                     return -1;
                 }
                 else
@@ -86,8 +89,8 @@ int LidarLinker::connect2Lidar(uint32_t timeout_sec)
         if (lidarSockFD > 0)
             fcntl(lidarSockFD, F_SETFL, flag);
     }
-    DBG_INFO << T_GREEN << "["<<lidarName<<"]The connection has been successful." << T_RESET << endl;
-    if(onConnectionStateChanged!=nullptr)
+    DBG_INFO << T_GREEN << "[" << lidarName << "]The connection has been successful." << T_RESET << endl;
+    if (onConnectionStateChanged != nullptr)
         onConnectionStateChanged(Connected);
     return 0;
 }
@@ -95,21 +98,23 @@ int LidarLinker::connect2Lidar(uint32_t timeout_sec)
 int LidarLinker::reconnect2Lidar()
 {
     close(lidarSockFD);
-    if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        DBG_INFO << T_RED << "["<<lidarName<<"]Fata : Failed to reset socket fd : " << strerror(errno) << T_RESET << endl;
+    if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        DBG_INFO << T_RED << "[" << lidarName << "]Fata : Failed to reset socket fd : " << strerror(errno) << T_RESET << endl;
         exit(-1);
     }
-    setsockopt(lidarSockFD,SOL_SOCKET,SO_RCVTIMEO,&rcvtimeout,sizeof(rcvtimeout));
+    setsockopt(lidarSockFD, SOL_SOCKET, SO_RCVTIMEO, &rcvtimeout, sizeof(rcvtimeout));
     return connect2Lidar();
 }
 
 int LidarLinker::disconnectFromLidar()
 {
-    if (pthread_kill(dataReceiver,0)==0)
+    if (pthread_kill(dataReceiver, 0) == 0)
         stopLidar();
-    if (lidarSockFD > 0){
+    if (lidarSockFD > 0)
+    {
         close(lidarSockFD);
-        if(onConnectionStateChanged!=nullptr)
+        if (onConnectionStateChanged != nullptr)
             onConnectionStateChanged(Disconnected);
         return 0;
     }
@@ -119,7 +124,7 @@ int LidarLinker::disconnectFromLidar()
 
 int LidarLinker::startupLidar()
 {
-    return startupLidar(lidarParam.speed,lidarParam.dataType);
+    return startupLidar(lidarParam.speed, lidarParam.dataType);
 }
 
 int LidarLinker::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_type)
@@ -131,13 +136,13 @@ int LidarLinker::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_
     if (send_cmd_to_lidar(PacLidar::CTRL_START) < 0)
         return -1;
 
-    if(pthread_self() != dataReceiver)
+    if (pthread_self() != dataReceiver)
     {
         isCap = true;
         pthread_create(&dataReceiver, NULL, dataRecvFunc, (void *)this);
         while (pthread_kill(dataReceiver, 0) != 0)
         {
-            DBG_INFO << T_BLUE << "["<<lidarName<<"]Wait for receiver thread starting." << T_RESET << endl;
+            DBG_INFO << T_BLUE << "[" << lidarName << "]Wait for receiver thread starting." << T_RESET << endl;
             msleep(1);
         }
     }
@@ -146,23 +151,25 @@ int LidarLinker::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_
 
 int LidarLinker::stopLidar()
 {
-    if (pthread_kill(dataReceiver,0)==0){
+    if (pthread_kill(dataReceiver, 0) == 0)
+    {
         isCap = false;
-        if(pthread_self()!=dataReceiver)
+        if (pthread_self() != dataReceiver)
             pthread_join(dataReceiver, NULL);
     }
-    if(send_cmd_to_lidar(PacLidar::CTRL_STOP)<0)
+    if (send_cmd_to_lidar(PacLidar::CTRL_STOP) < 0)
         return -1;
     else
         return 0;
 }
 
-int LidarLinker::setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type)
+int LidarLinker::setupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_type)
 {
     lidarParam.speed = speed;
     lidarParam.dataType = data_type;
-    if(send_cmd_to_lidar(speed)==-1 || send_cmd_to_lidar(data_type)==-1){
-        DBG_INFO<<T_RED<<"["<<lidarName<<"]Error : Setup lidar failed : "<<strerror(errno)<<T_RESET << endl;
+    if (send_cmd_to_lidar(speed) == -1 || send_cmd_to_lidar(data_type) == -1)
+    {
+        DBG_INFO << T_RED << "[" << lidarName << "]Error : Setup lidar failed : " << strerror(errno) << T_RESET << endl;
         return -1;
     }
     return 0;
@@ -174,7 +181,7 @@ int LidarLinker::getLidarScanByBeam(float *ranges, float *intensities, unsigned 
     assert(stop_beam <= PAC_MAX_BEAMS - 1);
     assert(stop_beam > start_beam);
 
-    memset(ranges,      0, (stop_beam + 1 - start_beam) * sizeof(float));
+    memset(ranges, 0, (stop_beam + 1 - start_beam) * sizeof(float));
     memset(intensities, 0, (stop_beam + 1 - start_beam) * sizeof(float));
     if (pthread_mutex_lock(&mutex) == 0)
     {
@@ -201,13 +208,12 @@ int LidarLinker::getLidarScanByBeam(float *ranges, float *intensities, unsigned 
         return -1;
 }
 
-
 int LidarLinker::getLidarScanByAngle(float *ranges, float *intensities, float start_angle, float stop_angle)
 {
-    unsigned start_beam = start_angle/PAC_ANGLE_RESOLUTION;
-    unsigned stop_beam = stop_angle/PAC_ANGLE_RESOLUTION;
-    stop_beam-=1;
-    return getLidarScanByBeam(ranges,intensities,start_beam,stop_beam);
+    unsigned start_beam = start_angle / PAC_ANGLE_RESOLUTION;
+    unsigned stop_beam = stop_angle / PAC_ANGLE_RESOLUTION;
+    stop_beam -= 1;
+    return getLidarScanByBeam(ranges, intensities, start_beam, stop_beam);
 }
 
 int LidarLinker::getLidarState(PacLidar::lidarState_t &state)
@@ -227,16 +233,18 @@ int LidarLinker::send_cmd_to_lidar(uint16_t cmd)
         return -1;
     uint16_t netCMD = htons(cmd);
     int rtn = send(lidarSockFD, &netCMD, sizeof(netCMD), 0);
-    if (rtn < 0 || rtn != sizeof(netCMD)){
-        DBG_INFO << T_RED << "["<<lidarName<<"]Error : Send cmd failed with errno "<<errno<<" : "<< strerror(errno) << T_RESET << endl;
-        if(errno == ECONNRESET){ //reset by peer
-            DBG_INFO << T_BLUE <<"["<<lidarName<<"]Connection reset by peer,trying to reconnect it..."<<T_RESET << endl;
+    if (rtn < 0 || rtn != sizeof(netCMD))
+    {
+        DBG_INFO << T_RED << "[" << lidarName << "]Error : Send cmd failed with errno " << errno << " : " << strerror(errno) << T_RESET << endl;
+        if (errno == ECONNRESET)
+        { //reset by peer
+            DBG_INFO << T_BLUE << "[" << lidarName << "]Connection reset by peer,trying to reconnect it..." << T_RESET << endl;
             reconnect2Lidar();
             return send_cmd_to_lidar(cmd);
         }
     }
     else if (rtn == sizeof(netCMD))
-        DBG_INFO << T_GREEN << "["<<lidarName<<"]Send cmd : 0x" << std::hex << ntohs(netCMD) << " succed" << T_RESET << endl;
+        DBG_INFO << T_GREEN << "[" << lidarName << "]Send cmd : 0x" << std::hex << ntohs(netCMD) << " succed" << T_RESET << endl;
     msleep(50);
     return rtn;
 }
@@ -255,7 +263,7 @@ void LidarLinker::capLidarData()
     uint32_t buf_start_idx = 0;
     pthread_mutex_trylock(&mutex);
     PacLidar::LidarData_t data_remains[PAC_NUM_OF_ONE_SCAN];
-    bzero(data_remains,sizeof(data_remains));
+    bzero(data_remains, sizeof(data_remains));
     size_t remain_size = 0;
     while (isCap)
     {
@@ -288,26 +296,26 @@ void LidarLinker::capLidarData()
             }
             else if (recvedNum == 0)
             {
-                DBG_INFO << T_BLUE << "["<<lidarName<<"]Connection reset by peer,Trying to reconnect it..." << T_RESET << endl;
-                if(onConnectionStateChanged)
+                DBG_INFO << T_BLUE << "[" << lidarName << "]Connection reset by peer,Trying to reconnect it..." << T_RESET << endl;
+                if (onConnectionStateChanged)
                     onConnectionStateChanged(Disconnected);
                 reconnect2Lidar();
                 startupLidar();
             }
             else
             {
-                DBG_INFO << T_RED << "["<<lidarName<<"]Error : Receive msg from lidar failed with errno:"<< errno <<": "<< strerror(errno) << T_RESET << endl;
-                if(errno == EAGAIN)
+                DBG_INFO << T_RED << "[" << lidarName << "]Error : Receive msg from lidar failed with errno:" << errno << ": " << strerror(errno) << T_RESET << endl;
+                if (errno == EAGAIN)
                 {
-                    DBG_INFO<< T_RED <<"["<<lidarName<<"]Error : Server may be down,trying to reconnect it..."<<T_RESET << endl;
-                    if(onConnectionStateChanged)
+                    DBG_INFO << T_RED << "[" << lidarName << "]Error : Server may be down,trying to reconnect it..." << T_RESET << endl;
+                    if (onConnectionStateChanged)
                         onConnectionStateChanged(Disconnected);
                     reconnect2Lidar();
                     startupLidar();
                 }
             }
         }
-        
+
         /**************检查包尾***************/
         if (sockDataPkg[PAC_NUM_OF_ONE_PKG - 1].part1 == PacLidar::LIDAR_DATA_TAIL_T.part1)
         {
@@ -333,11 +341,11 @@ void LidarLinker::capLidarData()
 
             //初始化起始角度和结束角度寻找的标志位
             static bool dataAvalible = false;
-            
+
             //提取上次结余的数据
-            if (remain_size > 0)
+            if (remain_size <= PAC_NUM_OF_ONE_SCAN)
             {
-                for (int i=0;i<remain_size;i++)
+                for (int i = 0; i < remain_size; i++)
                 {
                     PacLidar::LidarData_t datai = data_remains[i];
                     if (datai.part2 < PAC_MAX_BEAMS)
@@ -348,59 +356,39 @@ void LidarLinker::capLidarData()
             }
 
             //提取本次收到的数据
-            for(int i=0;i<PAC_NUM_OF_ONE_SCAN;i++){
+            for (size_t i = 0; i < PAC_NUM_OF_ONE_SCAN; i++)
+            {
                 PacLidar::LidarData_t datai = scanDataPkg[i];
                 if (datai.part2 < PAC_MAX_BEAMS)
                 {
-                    if (i != 0)
-                    {
-                        //进行头尾计算，如果差值小于0,证明当前数据为新一周的数据
-                        PacLidar::LidarData_t dataPre = scanDataPkg[i - 1];
-                        if ((datai.part2 - dataPre.part2) < 0)
-                        {
-                            dataAvalible = true;
-                            remain_size = PAC_NUM_OF_ONE_SCAN - i;
-                            assert(remain_size>0 && remain_size<=PAC_NUM_OF_ONE_SCAN);
-                            memcpy(data_remains, &scanDataPkg[i], remain_size * sizeof(PacLidar::LidarData_t));
-                            break;
-                        }
-                    }
-                    //检测数据碰撞，如有碰撞证明前一周数据已经结束，此方法针对上一种判断方法漏掉的情况
-                    //情况：[当数组的最后一个元素为当前一周的最后一个元素，且此元素小于5760时]
-                    if(datai.part1!=0 && oneCircleData[datai.part2].part1 != 0)
+                    if (oneCircleData[datai.part2].part2 > 3600 && !dataAvalible)
                     {
                         dataAvalible = true;
                         remain_size = PAC_NUM_OF_ONE_SCAN - i;
-                        assert(remain_size > 0 && remain_size <= PAC_NUM_OF_ONE_SCAN);
                         memcpy(data_remains, &scanDataPkg[i], remain_size * sizeof(PacLidar::LidarData_t));
                         break;
                     }
                     oneCircleData[datai.part2] = datai;
                 }
-                else
-                {
-                    dataAvalible = true;
-                    if(datai.part2 == PAC_MAX_BEAMS )
-                        oneCircleData[0] = datai;
-                    remain_size = PAC_NUM_OF_ONE_SCAN - i - 1;
-                    assert(remain_size >= 0 && remain_size <= PAC_NUM_OF_ONE_SCAN);
-                    if (remain_size > 0)
-                        memcpy(data_remains, &scanDataPkg[i + 1], remain_size * sizeof(PacLidar::LidarData_t));
-                    break;
-                }
+                else if (datai.part2 == PAC_MAX_BEAMS)
+                    oneCircleData[0] = datai;
             }
             //提取一周数据完毕，解锁
             if (dataAvalible)
             {
                 // DBG_INFO << "Got one full pkg." << T_RESET << endl;
-                pointsFilter(oneCircleData,sizeof(oneCircleData));
+                pointsFilter(oneCircleData, sizeof(oneCircleData));
                 struct timespec ts;
-                timespec_get(&ts,TIME_UTC);
+                timespec_get(&ts, TIME_UTC);
                 ts.tv_nsec += 10000000; //10ms
-                if(ts.tv_nsec > 1000000000){ ts.tv_sec += 1; ts.tv_nsec-=1000000000;}
-                pthread_cond_timedwait(&cond_CopyPkg,&mutex,&ts);
+                if (ts.tv_nsec > 1000000000)
+                {
+                    ts.tv_sec += 1;
+                    ts.tv_nsec -= 1000000000;
+                }
+                pthread_cond_timedwait(&cond_CopyPkg, &mutex, &ts);
                 pthread_mutex_unlock(&mutex);
-                
+
                 pthread_mutex_lock(&mutex);
                 bzero(oneCircleData, sizeof(oneCircleData));
                 //重置标志
@@ -424,8 +412,43 @@ void LidarLinker::msleep(uint32_t msec)
 
 void LidarLinker::pointsFilter(PacLidar::LidarData_t *points, size_t size)
 {
-    if(size>(5042*sizeof(PacLidar::LidarData_t)))
+    if (size == (PAC_MAX_BEAMS * sizeof(PacLidar::LidarData_t))){
         points[5042].part1 = 0;
+
+        //加入两个极端强度的点
+        for(int i=5040;i<PAC_MAX_BEAMS;++i){
+            if(points[i].part1!=0){
+                points[i-1].part1 = points[i].part1;
+                points[i-1].part2 = static_cast<uint16_t>(i-1);
+                points[i-1].part3 = 0;
+                break;
+            }
+        }
+
+        for(int i=3600;i>0;--i){
+            if(points[i].part1!=0){
+                points[i+1].part1 = points[i].part1;
+                points[i+1].part2 = static_cast<uint16_t>(i+1);
+                points[i+1].part3 = 8000;
+                break;
+            }
+        }
+        
+        if(isHideBroken){
+            int brokenPoint = 5140;
+            for(int i = 5040;i<brokenPoint;++i)
+                points[i].part1 = 0;
+
+            for(int i=brokenPoint;i>0;--i){
+                if(points[i].part1!=0){
+                    points[i+1].part1 = points[i].part1;
+                    points[i+1].part2 = static_cast<uint16_t>(i+1);
+                    points[i+1].part3 = 8000;
+                    break;
+                }
+            }
+        }
+    }
 }
 
 void LidarLinker::registerConnectionStateChangedCallback(void (*callback)(int))

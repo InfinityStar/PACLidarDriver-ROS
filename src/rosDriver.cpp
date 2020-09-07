@@ -31,6 +31,7 @@ static string lidarIP = "192.168.1.199";
 static int lidarPort  = 5000;
 static int lidarSpeed = 10;
 static bool checkData = true;
+static bool tearOptim = false;
 
 static string frameID       = "world";
 static float rangeMin       = PAC_MIN_RANGE;
@@ -84,6 +85,8 @@ int main(int argc, char **argv)
         spd = PacLidar::SET_SPEED_HZ_10;
         break;
     }
+
+    lm.setTearOptimize(tearOptim);
 
     lm.connect2Lidar();
     lm.startupLidar(spd,dtType);
@@ -197,6 +200,11 @@ void getAllParams(string path)
     ret = ros::param::get(path + key, rangeMax);
     if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMax);
     else ROS_INFO("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMax);
+
+    key = "TearOptimize";
+    ret = ros::param::get(path + key, tearOptim);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),tearOptim);
+    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),tearOptim);
 }
 
 bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,
