@@ -2,8 +2,8 @@
         <!-- 可选的参数 -->
         <arg name="pac_lidar_ip"          default="192.168.1.199" />
         <arg name="pac_lidar_port"        default="5000"          />
-        <arg name="pac_lidar_speed"       default="10"            /><!--10 15 20-->
-        <arg name="pac_lidar_data_check"  default="true"          /><!--ture OR flase-->
+        <arg name="pac_lidar_speed"       default="10"    doc="motor speed 10 15 20 hz" />
+        <arg name="pac_lidar_data_check"  default="true"  doc="Is pre-filter the point" />
         <arg name="pac_lidar_scan_topic"  default="/scan"         />
         <arg name="pac_lidar_state_topic" default="pacLidarState" />
         <arg name="pac_lidar_ctrl_srv"    default="pacLidarCtrl"  />
@@ -11,7 +11,7 @@
         <arg name="base_frame_id"         default="base_link"     />
         <arg name="pac_lidar_range_min"   default="0.00"          />
         <arg name="pac_lidar_range_max"   default="60.0"          />
-        <arg name="point_tear_optimize"   default = "false"       />
+        <arg name="point_tear_optimize"   default = "false" doc="point cloud tear optimize.For 'true',The data of 315-320 degree will be dropped" />
 
         <!-- 启动雷达驱动节点 -->
         <node name="driver_node" pkg="paclidar_driver" type="driver_node" output="screen" required="true">
