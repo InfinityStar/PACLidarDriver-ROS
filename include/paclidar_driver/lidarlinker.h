@@ -19,6 +19,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <vector>
 #include "PACLidarCommon.h"
 
 // #define __DEBUG
@@ -99,6 +100,8 @@ public:
      */
     int getLidarScanByAngle(float *ranges, float *intensities, float start_angle = 0, float stop_angle = 360);
 
+
+    int getLidarScanData(std::vector<float>& ranges,std::vector<float>& intensities);
     /** 
     * @brief 获取雷达状态，获取之前请启动雷达
     * @param state结构体
@@ -133,6 +136,12 @@ public:
     */
     inline void setTearOptimize(bool available){isHideBroken = available;}
 
+    enum DataProprtion{
+        FULL_DATA = 1,
+        HALF_DATA = 2,
+        QUARTER_DATA = 4,
+    };
+    inline void setDataProportion(DataProprtion propr){_dtPropr = propr;}
 private:
     /** 
  * @brief 直接给雷达发送命令,不论其是否在接受数据
@@ -186,6 +195,8 @@ private:
     volatile bool isCap;
 
     volatile bool isHideBroken;
+
+    volatile int _dtPropr;
 
     pthread_mutex_t mutex;
     pthread_mutexattr_t mutexattr;

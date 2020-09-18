@@ -18,6 +18,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <paclidar_driver/PACLidarCtrl.h>
 #include <paclidar_driver/LidarState.h>
+#include <vector>
 
 using namespace std;
 using namespace PacLidar;
@@ -32,6 +33,7 @@ static int lidarPort  = 5000;
 static int lidarSpeed = 10;
 static bool checkData = true;
 static bool tearOptim = false;
+static int dataProportion = 1;
 
 static string frameID       = "world";
 static float rangeMin       = PAC_MIN_RANGE;
@@ -46,7 +48,7 @@ pthread_t svr_thread_t;
 void getAllParams(string path);
 void on_sigint_recved(int signo);
 void* ctrl_srv_advertise_func(void* node_handle);
-void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,float* ranges,float* intens);
+void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,std::vector<float>& ranges,std::vector<float>& intens);
 void lidarConnectionChanged(int state);
 
 int main(int argc, char **argv)
@@ -90,8 +92,8 @@ int main(int argc, char **argv)
 
     lm.connect2Lidar();
     lm.startupLidar(spd,dtType);
-    float scanRans[PAC_MAX_BEAMS];
-    float scanIntes[PAC_MAX_BEAMS];
+    std::vector<float> scanRans;
+    std::vector<float> scanIntes;
     sensor_msgs::LaserScan scanMsg;
 
     paclidar_driver::LidarState stateMsg;
@@ -102,7 +104,9 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         double startTM = ros::Time::now().toSec();
-        lm.getLidarScanByAngle(scanRans, scanIntes,0,360);
+        // lm.getLidarScanByAngle(scanRans, scanIntes,0,360);
+        lm.getLidarScanData(scanRans,scanIntes);
+        ROS_INFO("Size:%d",scanRans.size());
         publishLaserScanMsg(scanPub,scanMsg,ros::Time::now().toSec()-startTM,scanRans,scanIntes);
         if(scanMsg.scan_time>0.5) ROS_ERROR("Scan time over than 0.5s : %f",scanMsg.scan_time);
 
@@ -113,8 +117,10 @@ int main(int argc, char **argv)
         stateMsg.serial_number = dev_state.id;
         statePub.publish(stateMsg);
 
-        bzero(scanRans,PAC_MAX_BEAMS);
-        bzero(scanIntes,PAC_MAX_BEAMS);
+        // bzero(scanRans,PAC_MAX_BEAMS);
+        // bzero(scanIntes,PAC_MAX_BEAMS);
+        scanRans.clear();
+        scanIntes.clear();
     }
     pthread_join(svr_thread_t,NULL);
     return 0;
@@ -128,7 +134,7 @@ void on_sigint_recved(int signo)
     exit(0);
 }
 
-void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,float* ranges,float* intens)
+void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,std::vector<float>& ranges,std::vector<float>& intens)
 {
     msg.header.frame_id = frameID;
     msg.header.stamp = ros::Time::now();
@@ -140,8 +146,8 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
     msg.range_max = rangeMax;
     msg.range_min = rangeMin;
 
-    msg.ranges.assign(ranges,ranges+PAC_MAX_BEAMS);
-    msg.intensities.assign(intens, intens + PAC_MAX_BEAMS);
+    msg.ranges = ranges;
+    msg.intensities = intens;
 
     msg.scan_time = scanTm;
     msg.time_increment = msg.scan_time / (PAC_MAX_BEAMS - 1);

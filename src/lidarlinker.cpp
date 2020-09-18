@@ -7,6 +7,7 @@ LidarLinker::LidarLinker(string ip, uint16_t port, string name):
     isHideBroken(false),
     isCap(false),
     dataReceiver(0)
+    ,_dtPropr(1)
 {
 
     lidarParam.speed = PacLidar::SET_SPEED_HZ_10;
@@ -173,6 +174,35 @@ int LidarLinker::setupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_ty
         return -1;
     }
     return 0;
+}
+
+int LidarLinker::getLidarScanData(std::vector<float>& ranges,std::vector<float>& intensities)
+{
+    ranges.clear();
+    intensities.clear();
+    if (pthread_mutex_lock(&mutex) == 0)
+    {
+        for(int i = 0;i<PAC_MAX_BEAMS;++i)
+        {
+            auto range = oneCircleData[i].part1/1000.0;
+            if(i%_dtPropr) continue;
+            if(range)
+            {
+                ranges.push_back(range);
+                intensities.push_back(oneCircleData[i].part3);
+            }
+            else
+            {
+                ranges.push_back(INFINITY);
+                intensities.push_back(0);
+            }
+        }
+        pthread_cond_signal(&cond_CopyPkg);
+        pthread_mutex_unlock(&mutex);
+        return 0;
+    }
+    else
+        return -1;
 }
 
 int LidarLinker::getLidarScanByBeam(float *ranges, float *intensities, unsigned start_beam, unsigned stop_beam)
