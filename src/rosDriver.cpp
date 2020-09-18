@@ -39,7 +39,7 @@ static string frameID       = "world";
 static float rangeMin       = PAC_MIN_RANGE;
 static float rangeMax       = PAC_MAX_RANGE;
 static float angleMin       = 0;
-static float angleMax       = -M_PI+DEGTORAD(PAC_ANGLE_RESOLUTION);
+static float angleMax       = -M_PI;
 static float angleIncrement = DEGTORAD(PAC_ANGLE_RESOLUTION);
 
 LidarLinker *lm_ptr = nullptr;
@@ -66,6 +66,21 @@ int main(int argc, char **argv)
     LidarLinker lm(lidarIP,lidarPort,ros::this_node::getName());
     lm_ptr = &lm;
     lm.registerConnectionStateChangedCallback(&lidarConnectionChanged);
+
+    auto propr = LidarLinker::DataProprtion::FULL_DATA;
+    switch (dataProportion)
+    {
+    case 2:
+        propr = LidarLinker::HALF_DATA;
+        break;
+    case 4:
+        propr = LidarLinker::QUARTER_DATA;
+        break;
+    default:
+        propr = LidarLinker::FULL_DATA;
+        break;
+    }
+    lm.setDataProportion(propr);
 
     ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>(scanTpcName,1);
     ros::Publisher statePub = ros_nh.advertise<paclidar_driver::LidarState>(stateTpcName,1);
@@ -104,9 +119,7 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         double startTM = ros::Time::now().toSec();
-        // lm.getLidarScanByAngle(scanRans, scanIntes,0,360);
         lm.getLidarScanData(scanRans,scanIntes);
-        ROS_INFO("Size:%d",scanRans.size());
         publishLaserScanMsg(scanPub,scanMsg,ros::Time::now().toSec()-startTM,scanRans,scanIntes);
         if(scanMsg.scan_time>0.5) ROS_ERROR("Scan time over than 0.5s : %f",scanMsg.scan_time);
 
@@ -117,8 +130,6 @@ int main(int argc, char **argv)
         stateMsg.serial_number = dev_state.id;
         statePub.publish(stateMsg);
 
-        // bzero(scanRans,PAC_MAX_BEAMS);
-        // bzero(scanIntes,PAC_MAX_BEAMS);
         scanRans.clear();
         scanIntes.clear();
     }
@@ -140,8 +151,8 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
     msg.header.stamp = ros::Time::now();
 
     msg.angle_min = angleMin;
-    msg.angle_max = angleMax;
-    msg.angle_increment = angleIncrement;
+    msg.angle_max = angleMax+DEGTORAD(PAC_ANGLE_RESOLUTION*dataProportion);
+    msg.angle_increment = angleIncrement*dataProportion;
 
     msg.range_max = rangeMax;
     msg.range_min = rangeMin;
@@ -150,7 +161,7 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
     msg.intensities = intens;
 
     msg.scan_time = scanTm;
-    msg.time_increment = msg.scan_time / (PAC_MAX_BEAMS - 1);
+    msg.time_increment = msg.scan_time / (PAC_MAX_BEAMS/dataProportion - 1);
     pub.publish(msg);
 }
 
@@ -211,6 +222,11 @@ void getAllParams(string path)
     ret = ros::param::get(path + key, tearOptim);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),tearOptim);
     else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),tearOptim);
+
+    key = "DataProprtion";
+    ret = ros::param::get(path + key, dataProportion);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),dataProportion);
+    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),dataProportion);
 }
 
 bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,

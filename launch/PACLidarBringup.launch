@@ -11,7 +11,8 @@
         <arg name="base_frame_id"         default="base_link"     />
         <arg name="pac_lidar_range_min"   default="0.00"          />
         <arg name="pac_lidar_range_max"   default="60.0"          />
-        <arg name="point_tear_optimize"   default = "false" doc="point cloud tear optimize.For 'true',The data of 315-320 degree will be dropped" />
+        <arg name="pac_angular_resolution" default="1" doc="1 2 4,means 0.625/0.125/0.25 resolution"/>
+        <arg name="point_tear_optimize"   default = "false" doc="point cloud tear optimize.For 'true',the data of 315-320 degree will be dropped" />
 
         <!-- 启动雷达驱动节点 -->
         <node name="driver_node" pkg="paclidar_driver" type="driver_node" output="screen" required="true">
@@ -26,6 +27,7 @@
             <param name = "RangeMin"     type = "double" value = "$(arg pac_lidar_range_min)"  />
             <param name = "RangeMax"     type = "double" value = "$(arg pac_lidar_range_max)"  />
             <param name = "TearOptimize" type = "bool"   value = "$(arg point_tear_optimize)"  />
+            <param name = "DataProprtion" type = "int"    value = "$(arg pac_angular_resolution)" />
         </node>
 
         <!-- 发布tf变换 -->
