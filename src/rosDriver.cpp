@@ -171,62 +171,62 @@ void getAllParams(string path)
     string key="ScanTopic";
     ret = ros::param::get(path + key, scanTpcName);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),scanTpcName.c_str());
-    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),scanTpcName.c_str());
+    else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),scanTpcName.c_str());
 
     key = "CtrlSrv";
     ret = ros::param::get(path + key, ctrlSrvName);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),ctrlSrvName.c_str());
-    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),ctrlSrvName.c_str());
+    else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),ctrlSrvName.c_str());
 
     key = "StateTopic";
     ret = ros::param::get(path + key, stateTpcName);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),stateTpcName.c_str());
-    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),stateTpcName.c_str());
+    else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),stateTpcName.c_str());
 
     key = "IP";
     ret = ros::param::get(path + key, lidarIP);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),lidarIP.c_str());
-    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),lidarIP.c_str());
+    else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),lidarIP.c_str());
 
     key = "Port";
     ret = ros::param::get(path + key, lidarPort);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),lidarPort);
-    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),lidarPort);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),lidarPort);
 
     key = "Speed";
     ret = ros::param::get(path + key, lidarSpeed);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),lidarSpeed);
-    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),lidarSpeed);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),lidarSpeed);
 
     key = "DataCheck";
     ret = ros::param::get(path + key, checkData);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),checkData);
-    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),checkData);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),checkData);
 
     key = "FrameID";
     ret = ros::param::get(path + key, frameID);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),frameID.c_str());
-    else ROS_INFO("Can't get the paramter, using default %s : %s",key.c_str(),frameID.c_str());
+    else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),frameID.c_str());
 
     key = "RangeMin";
     ret = ros::param::get(path + key, rangeMin);
     if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMin);
-    else ROS_INFO("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMin);
+    else ROS_WARN("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMin);
 
     key = "RangeMax";
     ret = ros::param::get(path + key, rangeMax);
     if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMax);
-    else ROS_INFO("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMax);
+    else ROS_WARN("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMax);
 
     key = "TearOptimize";
     ret = ros::param::get(path + key, tearOptim);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),tearOptim);
-    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),tearOptim);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),tearOptim);
 
     key = "DataProprtion";
     ret = ros::param::get(path + key, dataProportion);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),dataProportion);
-    else ROS_INFO("Can't get the paramter, using default %s : %d",key.c_str(),dataProportion);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),dataProportion);
 }
 
 bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,
