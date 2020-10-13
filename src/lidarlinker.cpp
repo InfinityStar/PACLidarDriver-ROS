@@ -9,10 +9,6 @@ LidarLinker::LidarLinker(string ip, uint16_t port, string name):
     dataReceiver(0)
     ,_dtPropr(1)
 {
-
-    lidarParam.speed = PacLidar::SET_SPEED_HZ_10;
-    lidarParam.dataType = PacLidar::SET_DATA_CHECKED;
-
     lidarName = name + "(" + ip + ":" + to_string(port) + ")";
     lidarSockAddr = new sockaddr_in();
     if ((lidarSockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -125,15 +121,6 @@ int LidarLinker::disconnectFromLidar()
 
 int LidarLinker::startupLidar()
 {
-    return startupLidar(lidarParam.speed, lidarParam.dataType);
-}
-
-int LidarLinker::startupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_type)
-{
-    lidarParam.dataType = data_type;
-    lidarParam.speed = speed;
-    send_cmd_to_lidar(data_type);
-    send_cmd_to_lidar(speed);
     if (send_cmd_to_lidar(PacLidar::CTRL_START) < 0)
         return -1;
 
@@ -164,15 +151,80 @@ int LidarLinker::stopLidar()
         return 0;
 }
 
-int LidarLinker::setupLidar(PacLidar::lidarCMD speed, PacLidar::lidarCMD data_type)
+int LidarLinker::setupLidar(LidarProp prop,int val)
 {
-    lidarParam.speed = speed;
-    lidarParam.dataType = data_type;
-    if (send_cmd_to_lidar(speed) == -1 || send_cmd_to_lidar(data_type) == -1)
-    {
-        DBG_INFO << T_RED << "[" << lidarName << "]Error : Setup lidar failed : " << strerror(errno) << T_RESET << endl;
-        return -1;
+    PacLidar::lidarCMD _cmd;
+    if(prop == SCAN_RATE){
+        switch (val)
+        {
+        case 10:
+            _cmd = PacLidar::SET_SPEED_HZ_10;
+            break;
+        case 15:
+            _cmd = PacLidar::SET_SPEED_HZ_15;
+            break;
+        case 20:
+            _cmd = PacLidar::SET_SPEED_HZ_20;
+            break;
+        case 25:
+            _cmd = PacLidar::SET_SPEED_HZ_25;
+            break;
+        case 30:
+            _cmd = PacLidar::SET_SPEED_HZ_30;
+            break;
+        default:
+            return -1;
+            break;
+        }
+
+        if (send_cmd_to_lidar(_cmd) == -1)
+        {
+            DBG_INFO << T_RED << "[" << lidarName << "]Error : Setup lidar failed : " << strerror(errno) << T_RESET << endl;
+            return -1;
+        }
     }
+    else if(prop == FILTER_LEVEL){
+        switch (val)
+        {
+        case 0:
+            _cmd = PacLidar::NO_WAVE_FILTERING;
+            break;
+        case 1:
+            _cmd = PacLidar::WAVE_FILTERING_1;
+            break;
+        case 2:
+            _cmd = PacLidar::WAVE_FILTERING_2;
+            break;
+        case 3:
+            _cmd = PacLidar::WAVE_FILTERING_3;
+            break;
+        case 4:
+            _cmd = PacLidar::WAVE_FILTERING_4;
+            break;
+        case 5:
+            _cmd = PacLidar::WAVE_FILTERING_5;
+            break;
+        case 6:
+            _cmd = PacLidar::WAVE_FILTERING_6;
+            break;
+        default:
+            return -1;
+            break;
+        }
+        if (send_cmd_to_lidar(_cmd) == -1)
+        {
+            DBG_INFO << T_RED << "[" << lidarName << "]Error : Setup lidar failed : " << strerror(errno) << T_RESET << endl;
+            return -1;
+        }
+    }
+    else if(prop == DATA_PROPORTION){
+        if(val!=1 && val!=2 && val!=4) return -1;
+        _dtPropr = val;
+    }
+    else if (prop == TEAR_OPTIMIZE){
+        isHideBroken = val;
+    }
+
     return 0;
 }
 
@@ -203,47 +255,6 @@ int LidarLinker::getLidarScanData(std::vector<float>& ranges,std::vector<float>&
     }
     else
         return -1;
-}
-
-int LidarLinker::getLidarScanByBeam(float *ranges, float *intensities, unsigned start_beam, unsigned stop_beam)
-{
-    assert(start_beam >= 0);
-    assert(stop_beam <= PAC_MAX_BEAMS - 1);
-    assert(stop_beam > start_beam);
-
-    memset(ranges, 0, (stop_beam + 1 - start_beam) * sizeof(float));
-    memset(intensities, 0, (stop_beam + 1 - start_beam) * sizeof(float));
-    if (pthread_mutex_lock(&mutex) == 0)
-    {
-        float range = 0;
-        for (int i = start_beam; i <= stop_beam; ++i)
-        {
-            range = oneCircleData[i].part1 / 1000.0;
-            if (range)
-            {
-                ranges[i] = range;
-                intensities[i] = oneCircleData[i].part3;
-            }
-            else
-            {
-                ranges[i] = INFINITY;
-                intensities[i] = 0;
-            }
-        }
-        pthread_cond_signal(&cond_CopyPkg);
-        pthread_mutex_unlock(&mutex);
-        return 0;
-    }
-    else
-        return -1;
-}
-
-int LidarLinker::getLidarScanByAngle(float *ranges, float *intensities, float start_angle, float stop_angle)
-{
-    unsigned start_beam = start_angle / PAC_ANGLE_RESOLUTION;
-    unsigned stop_beam = stop_angle / PAC_ANGLE_RESOLUTION;
-    stop_beam -= 1;
-    return getLidarScanByBeam(ranges, intensities, start_beam, stop_beam);
 }
 
 int LidarLinker::getLidarState(PacLidar::lidarState_t &state)
@@ -391,7 +402,7 @@ void LidarLinker::capLidarData()
                 PacLidar::LidarData_t datai = scanDataPkg[i];
                 if (datai.part2 < PAC_MAX_BEAMS)
                 {
-                    if (oneCircleData[datai.part2].part2 > 3600 && !dataAvalible)
+                    if (oneCircleData[datai.part2].part2 > 3600 || oneCircleData[datai.part2].part2>0)
                     {
                         dataAvalible = true;
                         remain_size = PAC_NUM_OF_ONE_SCAN - i;
@@ -455,7 +466,7 @@ void LidarLinker::pointsFilter(PacLidar::LidarData_t *points, size_t size)
             }
         }
 
-        for(int i=3600;i>0;--i){
+        for(int i=3600;i>2880;--i){
             if(points[i].part1!=0){
                 points[i+1].part1 = points[i].part1;
                 points[i+1].part2 = static_cast<uint16_t>(i+1);

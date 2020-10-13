@@ -67,11 +67,20 @@ namespace PacLidar
     {
         CTRL_START        = 0x7362,
         CTRL_STOP         = 0x6f70,
+        CTRL_BOOT_LOAD    = 0xaabb,
         SET_SPEED_HZ_10   = 0x500a,
         SET_SPEED_HZ_15   = 0x500f,
         SET_SPEED_HZ_20   = 0x5014,
-        SET_DATA_ORIGINAL = 0x6474,
-        SET_DATA_CHECKED  = 0x6475,
+        SET_SPEED_HZ_25   = 0x5019,
+        SET_SPEED_HZ_30   = 0x501e,
+        NO_WAVE_FILTERING=  0x6474,
+        WAVE_FILTERING_1 =  0x6475,
+        WAVE_FILTERING_2 =  0x6476,
+        WAVE_FILTERING_3 =  0x6477,
+        WAVE_FILTERING_4 =  0x6478,
+        WAVE_FILTERING_5 =  0x6479,
+        WAVE_FILTERING_6 =  0x647a,
+        HEART_BEAT        = 0x0101,
     };
 
     enum lidarDataDef

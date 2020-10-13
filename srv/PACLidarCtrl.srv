@@ -1,4 +1,4 @@
 int32  lidarSpeed
-bool   dataCheck
+int32  filterLev
 ---
 int32  result

@@ -31,7 +31,7 @@ static string ctrlSrvName  = "pac_lidar_ctrl";
 static string lidarIP = "192.168.1.199";
 static int lidarPort  = 5000;
 static int lidarSpeed = 10;
-static bool checkData = true;
+static int filter_lev = 3;
 static bool tearOptim = false;
 static int dataProportion = 1;
 
@@ -67,46 +67,23 @@ int main(int argc, char **argv)
     lm_ptr = &lm;
     lm.registerConnectionStateChangedCallback(&lidarConnectionChanged);
 
-    auto propr = LidarLinker::DataProprtion::FULL_DATA;
-    switch (dataProportion)
-    {
-    case 2:
-        propr = LidarLinker::HALF_DATA;
-        break;
-    case 4:
-        propr = LidarLinker::QUARTER_DATA;
-        break;
-    default:
-        propr = LidarLinker::FULL_DATA;
-        break;
-    }
-    lm.setDataProportion(propr);
-
     ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>(scanTpcName,1);
     ros::Publisher statePub = ros_nh.advertise<paclidar_driver::LidarState>(stateTpcName,1);
 
-    PacLidar::lidarCMD dtType = checkData?PacLidar::SET_DATA_CHECKED:PacLidar::SET_DATA_ORIGINAL;
-    PacLidar::lidarCMD spd;
-    switch (lidarSpeed)
+    if(lm.connect2Lidar(10)!=0) 
     {
-    case 10:
-        spd = PacLidar::SET_SPEED_HZ_10;
-        break;
-    case 15:
-        spd = PacLidar::SET_SPEED_HZ_15;
-        break;
-    case 20:
-        spd = PacLidar::SET_SPEED_HZ_20;
-        break;
-    default:
-        spd = PacLidar::SET_SPEED_HZ_10;
-        break;
+        ROS_ERROR("Failed to connect lidar,please check your network configuration.");
+        ros::shutdown();
+        exit(0);
     }
-
-    lm.setTearOptimize(tearOptim);
-
-    lm.connect2Lidar();
-    lm.startupLidar(spd,dtType);
+    lm.setupLidar(LidarLinker::TEAR_OPTIMIZE,tearOptim);
+    if(lm.setupLidar(LidarLinker::DATA_PROPORTION,dataProportion)<0)
+    {
+        ROS_ERROR("Failed to set DATA_PRPPORTION as :%d",dataProportion);
+    }
+    lm.setupLidar(LidarLinker::SCAN_RATE,lidarSpeed);
+    lm.setupLidar(LidarLinker::FILTER_LEVEL,filter_lev);
+    lm.startupLidar();
     std::vector<float> scanRans;
     std::vector<float> scanIntes;
     sensor_msgs::LaserScan scanMsg;
@@ -199,9 +176,9 @@ void getAllParams(string path)
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),lidarSpeed);
 
     key = "DataCheck";
-    ret = ros::param::get(path + key, checkData);
-    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),checkData);
-    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),checkData);
+    ret = ros::param::get(path + key, filter_lev);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),filter_lev);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),filter_lev);
 
     key = "FrameID";
     ret = ros::param::get(path + key, frameID);
@@ -232,26 +209,8 @@ void getAllParams(string path)
 bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,
                 paclidar_driver::PACLidarCtrl::Response &res)
 {
-    PacLidar::lidarCMD dtType = req.dataCheck?PacLidar::SET_DATA_CHECKED:PacLidar::SET_DATA_ORIGINAL;
-    PacLidar::lidarCMD spd;
-    switch (req.lidarSpeed)
-    {
-    case 10:
-        spd = PacLidar::SET_SPEED_HZ_10;
-        break;
-    case 15:
-        spd = PacLidar::SET_SPEED_HZ_15;
-        break;
-    case 20:
-        spd = PacLidar::SET_SPEED_HZ_20;
-        break;
-    default:
-        req.lidarSpeed = 10;
-        spd = PacLidar::SET_SPEED_HZ_10;
-        break;
-    }
-    ROS_INFO("Received cmd to set LidarSpeed: %d Hz,DataChecked: %d.",req.lidarSpeed,req.dataCheck);
-    res.result = lm_ptr->setupLidar(spd,dtType);
+    ROS_INFO("Received cmd to set LidarSpeed: %d Hz,FilterLevel: %d.",req.lidarSpeed,req.filterLev);
+    res.result = lm_ptr->setupLidar(LidarLinker::SCAN_RATE,req.lidarSpeed)+lm_ptr->setupLidar(LidarLinker::FILTER_LEVEL,req.filterLev);
     return true;
 }            
 

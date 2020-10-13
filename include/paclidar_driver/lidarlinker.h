@@ -55,17 +55,10 @@ public:
     int disconnectFromLidar();
 
     /**
-    * @brief 以储存的参数启动雷达电机以及数据通讯
+    * @brief 启动雷达电机以及数据通讯
     * @return 成功 0 ，失败 -1
     */
     int startupLidar();
-
-    /** 
-    * @brief 指定参数启动雷达电机以及数据通讯，且修改储存的参数
-    * @param 雷达的转速以及雷达的数据类型
-    * @return 成功 0 ，失败 -1
-    */
-    int startupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type);
 
     /**
     * @brief 停止接收线程，关闭电机
@@ -74,32 +67,19 @@ public:
     */
     int stopLidar();
 
+    enum LidarProp{
+        SCAN_RATE,
+        FILTER_LEVEL,
+        DATA_PROPORTION,
+        TEAR_OPTIMIZE,
+    };
     /**
     * @brief 设置参数，如果线程在运行，则向雷达发送修改参数指令，
     *       否则只修改结构体中的参数
     * @param 雷达转速、数据类型
     * @return：成功 0 ，失败 -1
     */
-    int setupLidar(PacLidar::lidarCMD speed,PacLidar::lidarCMD data_type);
-
-    /**
-     * @brief 获取雷达的扫描数据
-     * @param
-     * 1和2 两个数组,rangs数组存储距离数据，intensities数组存储强度
-     * 3和4 读取的起始光束和结束光束(包含始末两端)
-     * @return 成功返回0,失败返回-1
-     */
-    int getLidarScanByBeam(float *ranges, float *intensities, unsigned start_beam = 0, unsigned stop_beam = PAC_MAX_BEAMS);
-
-    /**
-     * @brief 获取雷达的扫描数据
-     * @param
-     * 1和2 两个数组,rangs数组存储距离数据，intensities数组存储强度
-     * 3和4 读取的起始角度和结束角度(包含起始角度，不包含结束角度，即:[start,stop))
-     * @return 成功返回0,失败返回-1
-     */
-    int getLidarScanByAngle(float *ranges, float *intensities, float start_angle = 0, float stop_angle = 360);
-
+    int setupLidar(LidarProp prop,int val);
 
     int getLidarScanData(std::vector<float>& ranges,std::vector<float>& intensities);
     /** 
@@ -127,21 +107,6 @@ public:
     * @note 此类已设置断线重连，请勿在此函数中操作链接
     */
     void registerConnectionStateChangedCallback(void (*callback)(int));
-
-    /** 
-    * @brief 撕裂优化：优化雷达绕z轴旋转时，点云图出现线的撕裂
-    * @param 开关;
-    * @return  null
-    * @note 此方法提供修复，但是会丢失315-320度的数据
-    */
-    inline void setTearOptimize(bool available){isHideBroken = available;}
-
-    enum DataProprtion{
-        FULL_DATA = 1,
-        HALF_DATA = 2,
-        QUARTER_DATA = 4,
-    };
-    inline void setDataProportion(DataProprtion propr){_dtPropr = propr;}
 private:
     /** 
  * @brief 直接给雷达发送命令,不论其是否在接受数据
@@ -184,11 +149,11 @@ private:
     
     PacLidar::lidarState_t lidarStatus;
 
-    struct 
-    {
-        PacLidar::lidarCMD speed;
-        PacLidar::lidarCMD dataType;
-    } lidarParam;
+    // struct 
+    // {
+    //     PacLidar::lidarCMD speed;
+    //     PacLidar::lidarCMD filter_level;
+    // } lidarParam;
     
     struct timeval rcvtimeout;
 
