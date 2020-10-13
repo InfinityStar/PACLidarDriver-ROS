@@ -30,6 +30,7 @@ static string ctrlSrvName  = "pac_lidar_ctrl";
 
 static string lidarIP = "192.168.1.199";
 static int lidarPort  = 5000;
+static int linkTimeout = 10;
 static int lidarSpeed = 10;
 static int filter_lev = 3;
 static bool tearOptim = false;
@@ -70,7 +71,7 @@ int main(int argc, char **argv)
     ros::Publisher scanPub = ros_nh.advertise<sensor_msgs::LaserScan>(scanTpcName,1);
     ros::Publisher statePub = ros_nh.advertise<paclidar_driver::LidarState>(stateTpcName,1);
 
-    if(lm.connect2Lidar(10)!=0) 
+    if(lm.connect2Lidar(linkTimeout)!=0) 
     {
         ROS_ERROR("Failed to connect lidar,please check your network configuration.");
         ros::shutdown();
@@ -169,6 +170,11 @@ void getAllParams(string path)
     ret = ros::param::get(path + key, lidarPort);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),lidarPort);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),lidarPort);
+
+    key = "Timeout";
+    ret = ros::param::get(path + key, linkTimeout);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),linkTimeout);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),linkTimeout);
 
     key = "Speed";
     ret = ros::param::get(path + key, lidarSpeed);
