@@ -1,10 +1,10 @@
 <launch>
-        <!-- 可选的参数 -->
+        <!-- args -->
         <arg name="pac_lidar_ip"          default="192.168.1.199" />
         <arg name="pac_lidar_port"        default="5000"          />
         <arg name="link_timeout_sec"      default="10" doc="Connection second timeout" />
         <arg name="pac_lidar_speed"       default="10"    doc="motor speed 10 15 20 hz" />
-        <arg name="pac_lidar_data_check"  default="3"  doc="Wave Filter level(0-6)" />
+        <arg name="pac_lidar_filter_lev"  default="3"  doc="Wave Filter level(0-6)" />
         <arg name="pac_lidar_scan_topic"  default="/scan"         />
         <arg name="pac_lidar_state_topic" default="pacLidar_state" />
         <arg name="pac_lidar_ctrl_srv"    default="pacLidar_ctrl"  />
@@ -15,24 +15,24 @@
         <arg name="pac_angular_resolution" default="1" doc="1 2 4,means 0.625/0.125/0.25 resolution"/>
         <arg name="point_tear_optimize"   default = "false" doc="point cloud tear optimize.For 'true',the data of 315-320 degree will be dropped" />
 
-        <!-- 启动雷达驱动节点 -->
+        <!-- start driver node -->
         <node name="driver_node" pkg="paclidar_driver" type="driver_node" output="screen" required="true">
-            <param name = "IP"           type = "string" value = "$(arg pac_lidar_ip)"         />
-            <param name = "Port"         type = "int"    value = "$(arg pac_lidar_port)"       />
-            <param name = "Timeout"      type = "int"    value = "$(arg link_timeout_sec)"     />
-            <param name = "Speed"        type = "int"    value = "$(arg pac_lidar_speed)"      />
-            <param name = "DataCheck"    type = "int"    value = "$(arg pac_lidar_data_check)" />
-            <param name = "ScanTopic"    type = "string" value = "$(arg pac_lidar_scan_topic)" />
-            <param name = "StateTopic"   type = "string" value = "$(arg pac_lidar_state_topic)"/>
-            <param name = "CtrlSrv"      type = "string" value = "$(arg pac_lidar_ctrl_srv)"   />
-            <param name = "FrameID"      type = "string" value = "$(arg pac_lidar_frame_id)"   />
-            <param name = "RangeMin"     type = "double" value = "$(arg pac_lidar_range_min)"  />
-            <param name = "RangeMax"     type = "double" value = "$(arg pac_lidar_range_max)"  />
-            <param name = "TearOptimize" type = "bool"   value = "$(arg point_tear_optimize)"  />
-            <param name = "DataProprtion" type = "int"   value = "$(arg pac_angular_resolution)" />
+            <param name = "pac_lidar_ip"            type = "string" value = "$(arg pac_lidar_ip)"           />
+            <param name = "pac_lidar_port"          type = "int"    value = "$(arg pac_lidar_port)"         />
+            <param name = "link_timeout_sec"        type = "int"    value = "$(arg link_timeout_sec)"       />
+            <param name = "pac_lidar_speed"         type = "int"    value = "$(arg pac_lidar_speed)"        />
+            <param name = "pac_lidar_filter_lev"    type = "int"    value = "$(arg pac_lidar_filter_lev)"   />
+            <param name = "pac_lidar_scan_topic"    type = "string" value = "$(arg pac_lidar_scan_topic)"   />
+            <param name = "pac_lidar_state_topic"   type = "string" value = "$(arg pac_lidar_state_topic)"  />
+            <param name = "pac_lidar_ctrl_srv"      type = "string" value = "$(arg pac_lidar_ctrl_srv)"     />
+            <param name = "pac_lidar_frame_id"      type = "string" value = "$(arg pac_lidar_frame_id)"     />
+            <param name = "pac_lidar_range_min"     type = "double" value = "$(arg pac_lidar_range_min)"    />
+            <param name = "pac_lidar_range_max"     type = "double" value = "$(arg pac_lidar_range_max)"    />
+            <param name = "pac_angular_resolution"  type = "int"    value = "$(arg pac_angular_resolution)" />
+            <param name = "point_tear_optimize"     type = "bool"   value = "$(arg point_tear_optimize)"    />
         </node>
 
-        <!-- 发布tf变换 -->
+        <!-- tf -->
         <node pkg="tf" type="static_transform_publisher" name="base_link_to_paclidar"
-        args="0 0 0.62 0 0 0 $(arg base_frame_id) $(arg pac_lidar_frame_id) 100" />
+        args="0 0 0 0 0 0 $(arg base_frame_id) $(arg pac_lidar_frame_id) 100" />
 </launch>

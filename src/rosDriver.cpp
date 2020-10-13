@@ -146,67 +146,67 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
 void getAllParams(string path)
 {
     bool ret = false;
-    string key="ScanTopic";
+    string key="pac_lidar_scan_topic";
     ret = ros::param::get(path + key, scanTpcName);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),scanTpcName.c_str());
     else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),scanTpcName.c_str());
 
-    key = "CtrlSrv";
+    key = "pac_lidar_ctrl_srv";
     ret = ros::param::get(path + key, ctrlSrvName);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),ctrlSrvName.c_str());
     else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),ctrlSrvName.c_str());
 
-    key = "StateTopic";
+    key = "pac_lidar_state_topic";
     ret = ros::param::get(path + key, stateTpcName);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),stateTpcName.c_str());
     else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),stateTpcName.c_str());
 
-    key = "IP";
+    key = "pac_lidar_ip";
     ret = ros::param::get(path + key, lidarIP);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),lidarIP.c_str());
     else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),lidarIP.c_str());
 
-    key = "Port";
+    key = "pac_lidar_port";
     ret = ros::param::get(path + key, lidarPort);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),lidarPort);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),lidarPort);
 
-    key = "Timeout";
+    key = "link_timeout_sec";
     ret = ros::param::get(path + key, linkTimeout);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),linkTimeout);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),linkTimeout);
 
-    key = "Speed";
+    key = "pac_lidar_speed";
     ret = ros::param::get(path + key, lidarSpeed);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),lidarSpeed);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),lidarSpeed);
 
-    key = "DataCheck";
+    key = "pac_lidar_filter_lev";
     ret = ros::param::get(path + key, filter_lev);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),filter_lev);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),filter_lev);
 
-    key = "FrameID";
+    key = "pac_lidar_frame_id";
     ret = ros::param::get(path + key, frameID);
     if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),frameID.c_str());
     else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),frameID.c_str());
 
-    key = "RangeMin";
+    key = "pac_lidar_range_min";
     ret = ros::param::get(path + key, rangeMin);
     if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMin);
     else ROS_WARN("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMin);
 
-    key = "RangeMax";
+    key = "pac_lidar_range_max";
     ret = ros::param::get(path + key, rangeMax);
     if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMax);
     else ROS_WARN("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMax);
 
-    key = "TearOptimize";
+    key = "point_tear_optimize";
     ret = ros::param::get(path + key, tearOptim);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),tearOptim);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),tearOptim);
 
-    key = "DataProprtion";
+    key = "pac_angular_resolution";
     ret = ros::param::get(path + key, dataProportion);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),dataProportion);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),dataProportion);
