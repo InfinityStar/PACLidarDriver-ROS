@@ -210,7 +210,12 @@ bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,
                 paclidar_driver::PACLidarCtrl::Response &res)
 {
     ROS_INFO("Received cmd to set LidarSpeed: %d Hz,FilterLevel: %d.",req.lidarSpeed,req.filterLev);
-    res.result = lm_ptr->setupLidar(LidarLinker::SCAN_RATE,req.lidarSpeed)+lm_ptr->setupLidar(LidarLinker::FILTER_LEVEL,req.filterLev);
+    auto ret = lm_ptr->setupLidar(LidarLinker::SCAN_RATE,req.lidarSpeed)+lm_ptr->setupLidar(LidarLinker::FILTER_LEVEL,req.filterLev);
+    if(ret<0){
+        res.result = "Failed to set lidar.";
+        return false;
+    }
+    res.result = "Completed.";
     return true;
 }            
 
