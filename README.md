@@ -92,6 +92,19 @@ Publishes the current state of the lidar.
 
 Set the configuration of lidar.
 
+Srv Usage:
+
+`
+rosservice call /pacLidar_ctrl "lidarSpeed: 0
+filterLev: 3"
+`
+
+- Support set 2 parameters at 1 command.
+
+- When parameter is negtive, this parameter would be ignored.
+
+- If user want to set a part of parameters, should set other parameters as negtive value.
+
 ### ROS parameters
 
 | Parameter Name         | Type     | Default       | Information | Required | Passed |
