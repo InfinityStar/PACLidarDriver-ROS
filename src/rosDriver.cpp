@@ -39,8 +39,8 @@ static int dataProportion = 1;
 static string frameID       = "world";
 static float rangeMin       = PAC_MIN_RANGE;
 static float rangeMax       = PAC_MAX_RANGE;
-static float angleMin       = 0;
-static float angleMax       = -M_PI;
+static float angleMin       = -1.570796327; //M_PI/2
+static float angleMax       = -1.570796327;
 static float angleIncrement = DEGTORAD(PAC_ANGLE_RESOLUTION);
 
 LidarLinker *lm_ptr = nullptr;
@@ -129,7 +129,7 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
     msg.header.stamp = ros::Time::now();
 
     msg.angle_min = angleMin;
-    msg.angle_max = angleMax+DEGTORAD(PAC_ANGLE_RESOLUTION*dataProportion);
+    msg.angle_max = angleMax;
     msg.angle_increment = angleIncrement*dataProportion;
 
     msg.range_max = rangeMax;
