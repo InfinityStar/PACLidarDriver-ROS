@@ -35,6 +35,7 @@ static int lidarSpeed = 10;
 static int filter_lev = 3;
 static bool tearOptim = false;
 static int dataProportion = 1;
+static int perDegLaserCnt = 16;
 
 static string frameID       = "world";
 static float rangeMin       = PAC_MIN_RANGE;
@@ -42,6 +43,9 @@ static float rangeMax       = PAC_MAX_RANGE;
 static float angleMin       = -1.570796327; //M_PI/2
 static float angleMax       = -1.570796327;
 static float angleIncrement = DEGTORAD(PAC_ANGLE_RESOLUTION);
+
+static int start_angle = 0;
+static int end_angle = 360;
 
 LidarLinker *lm_ptr = nullptr;
 pthread_t svr_thread_t;
@@ -98,7 +102,17 @@ int main(int argc, char **argv)
     {
         double startTM = ros::Time::now().toSec();
         lm.getLidarScanData(scanRans,scanIntes);
+        for(auto i=0;i<start_angle*perDegLaserCnt;++i){
+            scanRans[i] = INFINITY;
+            scanIntes[i] = 0;
+        }
+        for(auto i = end_angle*perDegLaserCnt;i<perDegLaserCnt*360;++i){
+            scanRans[i] = INFINITY;
+            scanIntes[i] = 0;
+        }
+        
         publishLaserScanMsg(scanPub,scanMsg,ros::Time::now().toSec()-startTM,scanRans,scanIntes);
+        
         if(scanMsg.scan_time>0.5) ROS_ERROR("Scan time over than 0.5s : %f",scanMsg.scan_time);
 
         lm.getLidarState(dev_state);
@@ -210,6 +224,26 @@ void getAllParams(string path)
     ret = ros::param::get(path + key, dataProportion);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),dataProportion);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),dataProportion);
+
+    key = "pac_data_start_angle";
+    ret = ros::param::get(path + key, start_angle);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),start_angle);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),start_angle);
+    if(!(start_angle>=0 && start_angle<360)){
+        ROS_ERROR("Invaild error:Start angle:%d out of range.Default:0 will be used.",start_angle);
+        start_angle = 0;
+    }
+
+    key = "pac_data_end_angle";
+    ret = ros::param::get(path + key, end_angle);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),end_angle);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),end_angle);
+    if(!(end_angle>=start_angle && end_angle<=360)){
+        ROS_ERROR("Invaild error:End angle:%d out of range.Default:360 will be used.",end_angle);
+        end_angle = 0;
+    };
+
+    perDegLaserCnt = PAC_MAX_BEAMS/360/dataProportion;
 }
 
 bool on_srv_called(paclidar_driver::PACLidarCtrl::Request &req,
