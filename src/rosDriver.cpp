@@ -40,8 +40,8 @@ static int perDegLaserCnt = 16;
 static string frameID       = "world";
 static float rangeMin       = PAC_MIN_RANGE;
 static float rangeMax       = PAC_MAX_RANGE;
-static float angleMin       = -1.570796327; //M_PI/2
-static float angleMax       = -1.570796327;
+static float angleMin       = -M_PI_2;
+static float angleMax       = M_PI*2-M_PI_2;
 static float angleIncrement = DEGTORAD(PAC_ANGLE_RESOLUTION);
 
 static int start_angle = 0;
