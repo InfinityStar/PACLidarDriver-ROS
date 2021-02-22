@@ -13,7 +13,6 @@
         <arg name="pac_lidar_range_min"   default="0.00"          />
         <arg name="pac_lidar_range_max"   default="60.0"          />
         <arg name="pac_angular_resolution" default="1" doc="1 2 4,means 0.625/0.125/0.25 resolution"/>
-        <arg name="point_tear_optimize"   default = "false" doc="point cloud tear optimize.For 'true',the data of 315-320 degree will be dropped" />
         <arg name="pac_data_start_angle"  default="0" doc="This 2 args use to split data as you want[start,end).The start degree data.Range:0-360, must less than [pac_lidar_end_angle]" />
         <arg name="pac_data_end_angle"    default="360" doc="The end degree data.0-360 must greater than or equal to it [pac_lidar_start_angle]" />
 
@@ -31,7 +30,6 @@
             <param name = "pac_lidar_range_min"     type = "double" value = "$(arg pac_lidar_range_min)"    />
             <param name = "pac_lidar_range_max"     type = "double" value = "$(arg pac_lidar_range_max)"    />
             <param name = "pac_angular_resolution"  type = "int"    value = "$(arg pac_angular_resolution)" />
-            <param name = "point_tear_optimize"     type = "bool"   value = "$(arg point_tear_optimize)"    />
             <param name = "pac_data_start_angle"    type = "int"    value = "$(arg pac_data_start_angle)"   />
             <param name = "pac_data_end_angle"      type = "int"    value = "$(arg pac_data_end_angle)"   />
         </node>

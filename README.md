@@ -121,7 +121,6 @@ filterLev: 3"
 | pac_lidar_range_min    | Double   | 0.00          | The scan data of the min range                    |   | ✔ |
 | pac_lidar_range_max    | Double   | 60.0          | The scan data of the max range                    |   | ✔ |
 | pac_angular_resolution | int      | 1             | The angle resolution of the scan data,Optinal:1 2 4,means **0.0625***1\|2\|4 |   | ✔ |
-| point_tear_optimize    | Boolean  | false         | The switch of the optimization of z-axis rotational tearing |   | ✔ |
 | pac_data_start_angle   | int      | 0             | The start angle of scan area.Scan area args use to split data as you want[start,end) |    | ✔ |
 | pac_data_end_angle     | int      | 360           | The end angle of scan area |    | ✔ |
 

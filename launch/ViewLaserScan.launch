@@ -4,7 +4,6 @@
         <arg name = "pac_lidar_port"        default = "5000"          />
         <arg name = "pac_lidar_speed"       default = "10"            />
         <arg name = "pac_lidar_frame_id"    default = "world"         />
-        <arg name = "point_tear_optimize"   default = "false"        />
 
         <!-- 启动雷达驱动节点 -->
         <include file="$(find paclidar_driver)/launch/PACLidarBringup.launch">
@@ -12,7 +11,6 @@
             <arg name = "pac_lidar_port"        value = "$(arg pac_lidar_port)"       />
             <arg name = "pac_lidar_speed"       value = "$(arg pac_lidar_speed)"      />
             <arg name = "pac_lidar_frame_id"    value = "$(arg pac_lidar_frame_id)"   />
-            <arg name = "point_tear_optimize"   value = "$(arg point_tear_optimize)"  />
         </include>
 
         <!-- 运行rviz可视化界面 -->

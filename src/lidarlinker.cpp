@@ -4,7 +4,6 @@ using namespace std;
 using namespace PacLidar;
 
 LidarLinker::LidarLinker(string ip, uint16_t port, string name):
-    isHideBroken(false),
     isCap(false),
     dataReceiver(0)
     ,_dtPropr(1)
@@ -221,9 +220,6 @@ int LidarLinker::setupLidar(LidarProp prop,int val)
         if(val!=1 && val!=2 && val!=4) return -1;
         _dtPropr = val;
     }
-    else if (prop == TEAR_OPTIMIZE){
-        isHideBroken = val;
-    }
 
     return 0;
 }
@@ -418,7 +414,6 @@ void LidarLinker::capLidarData()
             if (dataAvalible)
             {
                 // DBG_INFO << "Got one full pkg." << T_RESET << endl;
-                pointsFilter(oneCircleData, sizeof(oneCircleData));
                 struct timespec ts;
                 timespec_get(&ts, TIME_UTC);
                 ts.tv_nsec += 10000000; //10ms
@@ -448,41 +443,6 @@ void LidarLinker::msleep(uint32_t msec)
     {
         usleep(1000);
         msec--;
-    }
-}
-
-void LidarLinker::pointsFilter(PacLidar::LidarData_t *points, size_t size)
-{
-    if (size == (PAC_MAX_BEAMS * sizeof(PacLidar::LidarData_t))){
-        points[5042].part1 = 0;
-        
-        //优化撕裂：丢弃部分数据
-        if(isHideBroken){
-            int brokenPoint = 5140;
-            for(int i = 5040;i<brokenPoint;++i)
-                points[i].part1 = 0;
-        }
-
-        //@Modified ：Roser ：2020/11/9
-        //@brief ：取消ROS驱动中的强度校准点
-        //加入两个极端强度的点，作为校准
-        // for(int i=5040;i<PAC_MAX_BEAMS;++i){
-        //     if(points[i].part1!=0){
-        //         points[i-1].part1 = points[i].part1;
-        //         points[i-1].part2 = static_cast<uint16_t>(i-1);
-        //         points[i-1].part3 = 0;
-        //         break;
-        //     }
-        // }
-
-        // for(int i=3600;i>2880;--i){
-        //     if(points[i].part1!=0){
-        //         points[i+1].part1 = points[i].part1;
-        //         points[i+1].part2 = static_cast<uint16_t>(i+1);
-        //         points[i+1].part3 = 8000;
-        //         break;
-        //     }
-        // }
     }
 }
 

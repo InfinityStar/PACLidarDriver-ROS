@@ -71,7 +71,6 @@ public:
         SCAN_RATE,
         FILTER_LEVEL,
         DATA_PROPORTION,
-        TEAR_OPTIMIZE,
     };
     /**
     * @brief 设置参数，如果线程在运行，则向雷达发送修改参数指令，
@@ -158,8 +157,6 @@ private:
     struct timeval rcvtimeout;
 
     volatile bool isCap;
-
-    volatile bool isHideBroken;
 
     volatile int _dtPropr;
 

@@ -9,6 +9,29 @@
 * 创建标识：Init 
 * *******************************************************************/
 
+/** *****************************************************************
+ * LaserScan data detail information:
+ *  Header header
+ * # stamp: The acquisition time of the first ray in the scan.
+ * # frame_id: The laser is assumed to spin around the positive Z axis
+ * # (counterclockwise, if Z is up) with the zero angle forward along the x axis
+ * 
+ * float32 angle_min # start angle of the scan [rad]
+ * float32 angle_max # end angle of the scan [rad]
+ * float32 angle_increment # angular distance between measurements [rad]
+ * 
+ * float32 time_increment # time between measurements [seconds] - if your scanner
+ * # is moving, this will be used in interpolating position of 3d points
+ * float32 scan_time # time between scans [seconds]
+ * 
+ * float32 range_min # minimum range value [m]
+ * float32 range_max # maximum range value [m]
+ * 
+ * float32[] ranges # range data [m] (Note: values < range_min or > range_max should be discarded)
+ * float32[] intensities # intensity data [device-specific units]. If your
+ * # device does not provide intensities, please leave the array empty.
+ *  *****************************************************************/
+
 #include <iostream>
 #include <sys/signal.h>
 #include "lidarlinker.h"
@@ -33,7 +56,6 @@ static int lidarPort  = 5000;
 static int linkTimeout = 10;
 static int lidarSpeed = 10;
 static int filter_lev = 3;
-static bool tearOptim = false;
 static int dataProportion = 1;
 static int perDegLaserCnt = 16;
 
@@ -81,7 +103,6 @@ int main(int argc, char **argv)
         ros::shutdown();
         exit(0);
     }
-    lm.setupLidar(LidarLinker::TEAR_OPTIMIZE,tearOptim);
     if(lm.setupLidar(LidarLinker::DATA_PROPORTION,dataProportion)<0)
     {
         ROS_ERROR("Failed to set DATA_PRPPORTION as :%d",dataProportion);
@@ -214,11 +235,6 @@ void getAllParams(string path)
     ret = ros::param::get(path + key, rangeMax);
     if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMax);
     else ROS_WARN("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMax);
-
-    key = "point_tear_optimize";
-    ret = ros::param::get(path + key, tearOptim);
-    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),tearOptim);
-    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),tearOptim);
 
     key = "pac_angular_resolution";
     ret = ros::param::get(path + key, dataProportion);
