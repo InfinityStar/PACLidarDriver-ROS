@@ -119,6 +119,7 @@ int main(int argc, char **argv)
     
     pthread_create(&svr_thread_t,NULL,ctrl_srv_advertise_func,&ros_nh);
 
+    ros::Duration rator(0.025);
     while (ros::ok())
     {
         double startTM = ros::Time::now().toSec();
@@ -145,6 +146,8 @@ int main(int argc, char **argv)
 
         scanRans.clear();
         scanIntes.clear();
+        
+        rator.sleep();
     }
     pthread_join(svr_thread_t,NULL);
     return 0;
