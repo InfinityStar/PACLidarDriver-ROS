@@ -224,13 +224,28 @@ int LidarLinker::setupLidar(LidarProp prop,int val)
     return 0;
 }
 
-int LidarLinker::getLidarScanData(std::vector<float>& ranges,std::vector<float>& intensities)
+int LidarLinker::getLidarScanData(std::vector<float>& ranges,std::vector<float>& intensities,double& startTime,double& scanTime,double& mesureTime)
 {
     ranges.clear();
     intensities.clear();
     if (pthread_mutex_lock(&mutex) == 0)
     {
-        for(int i = 0;i<PAC_MAX_BEAMS;++i)
+        for(int i = PAC_START_BEAM;i<PAC_MAX_BEAMS;++i)
+        {
+            auto range = oneCircleData[i].part1/1000.0;
+            if(i%_dtPropr) continue;
+            if(range)
+            {
+                ranges.push_back(range);
+                intensities.push_back(oneCircleData[i].part3);
+            }
+            else
+            {
+                ranges.push_back(INFINITY);
+                intensities.push_back(0);
+            }
+        }
+        for(int i = 0;i<PAC_START_BEAM;++i)
         {
             auto range = oneCircleData[i].part1/1000.0;
             if(i%_dtPropr) continue;
@@ -247,7 +262,10 @@ int LidarLinker::getLidarScanData(std::vector<float>& ranges,std::vector<float>&
         }
         pthread_cond_signal(&cond_CopyPkg);
         pthread_mutex_unlock(&mutex);
-        return 0;
+        startTime = _pkgFirstRayTime;
+        scanTime = _pkgScanTime;
+        mesureTime = _complementMesureTime * _dtPropr;
+        return ranges.size();
     }
     else
         return -1;
@@ -296,12 +314,18 @@ void LidarLinker::capLidarData()
 {
     if (lidarSockFD < 0)
         return;
+    
+    PacLidar::LidarData_t sockDataPkg[PAC_NUM_OF_ONE_PKG];
+    PacLidar::LidarData_t scanDataPkg[PAC_NUM_OF_ONE_SCAN];
+
     ssize_t recvedNum = 0;
     uint32_t buf_start_idx = 0;
     pthread_mutex_trylock(&mutex);
-    PacLidar::LidarData_t data_remains[PAC_NUM_OF_ONE_SCAN];
-    bzero(data_remains, sizeof(data_remains));
-    size_t remain_size = 0;
+    PacLidar::LidarData_t dataRemains[PAC_NUM_OF_ONE_SCAN];
+    bzero(dataRemains, sizeof(dataRemains));
+    size_t remainPointsCnt = 0;
+    double pkgEndStamp = 0;
+    int pkgPointsCnt = 0;
     while (isCap)
     {
         size_t leftNum = sizeof(sockDataPkg);
@@ -312,6 +336,7 @@ void LidarLinker::capLidarData()
             bzero(index, leftNum);
 
             recvedNum = recv(lidarSockFD, index, leftNum, 0);
+            pkgEndStamp = ros::Time::now().toSec();
             if (recvedNum > 0)
             {
                 /************检查包头***********/
@@ -359,6 +384,7 @@ void LidarLinker::capLidarData()
             if (sockDataPkg[PAC_NUM_OF_ONE_PKG - 1].part2 == PacLidar::LIDAR_DATA_TAIL_T.part2 &&
                 sockDataPkg[PAC_NUM_OF_ONE_PKG - 1].part3 == PacLidar::LIDAR_DATA_TAIL_T.part3)
                 pkgTl = true;
+            pkgPointsCnt += 1000;
         }
         /***********************************/
 
@@ -380,29 +406,46 @@ void LidarLinker::capLidarData()
             static bool dataAvalible = false;
 
             //提取上次结余的数据
-            if (remain_size <= PAC_NUM_OF_ONE_SCAN)
+            if (remainPointsCnt>0 && remainPointsCnt <= PAC_NUM_OF_ONE_SCAN)
             {
-                for (int i = 0; i < remain_size; i++)
+                for (int i = 0; i < remainPointsCnt; i++)
                 {
-                    PacLidar::LidarData_t datai = data_remains[i];
+                    PacLidar::LidarData_t datai = dataRemains[i];
                     if (datai.part2 < PAC_MAX_BEAMS)
                         oneCircleData[datai.part2] = datai;
                 }
-                bzero(data_remains, sizeof(data_remains));
-                remain_size = 0;
+                pkgPointsCnt += remainPointsCnt;
+                bzero(dataRemains, sizeof(dataRemains));
+                remainPointsCnt = 0;
             }
 
             //提取本次收到的数据
+            bool isCoverEmptyBlock = false;
             for (size_t i = 0; i < PAC_NUM_OF_ONE_SCAN; i++)
             {
                 PacLidar::LidarData_t datai = scanDataPkg[i];
+                //如果角度与上个点重复，则舍弃此点
+                if (i){
+                    auto lastData = scanDataPkg[i - 1];
+                    if(datai.part2 == lastData.part2)
+                        continue;
+                    
+                    if((!isCoverEmptyBlock) && (datai.part2 - lastData.part2 > 1360)) //85*(1/PAC_ANGLE_RESOLUTION) = 1360
+                        isCoverEmptyBlock = true;
+                }
+
                 if (datai.part2 < PAC_MAX_BEAMS)
                 {
-                    if (oneCircleData[datai.part2].part2 > 3600 || oneCircleData[datai.part2].part2>0)
+                    //若当前角度大于314且已保存的点数大于736（5760-5024）个，视为获取到了新的一帧
+                    if (oneCircleData[datai.part2].part2 > 5024 && (pkgPointsCnt-PAC_NUM_OF_ONE_SCAN+i)>736)
                     {
                         dataAvalible = true;
-                        remain_size = PAC_NUM_OF_ONE_SCAN - i;
-                        memcpy(data_remains, &scanDataPkg[i], remain_size * sizeof(PacLidar::LidarData_t));
+
+                        remainPointsCnt = PAC_NUM_OF_ONE_SCAN - i;
+                        memcpy(dataRemains, &scanDataPkg[i], remainPointsCnt * sizeof(PacLidar::LidarData_t));
+
+                        pkgPointsCnt -= remainPointsCnt;
+
                         break;
                     }
                     oneCircleData[datai.part2] = datai;
@@ -410,9 +453,30 @@ void LidarLinker::capLidarData()
                 else if (datai.part2 == PAC_MAX_BEAMS)
                     oneCircleData[0] = datai;
             }
+            
+            /*******************计算时间**********************/
+            if(!isCoverEmptyBlock){
+                //Mesure time
+                int complementPointsCnt = 0;
+                if(scanDataPkg[0].part2>(PAC_START_BEAM-int(1/PAC_ANGLE_RESOLUTION))){
+                    complementPointsCnt += abs(scanDataPkg[0].part2-PAC_MAX_BEAMS);
+                    complementPointsCnt += scanDataPkg[PAC_NUM_OF_ONE_SCAN-1].part2;
+                } else {
+                    complementPointsCnt += scanDataPkg[PAC_NUM_OF_ONE_SCAN-1].part2 - scanDataPkg[0].part2;
+                }
+                _complementMesureTime = (PAC_NUM_OF_ONE_SCAN*PAC_MESURE_TIME) / complementPointsCnt;
+
+                //Scan Time
+                _pkgScanTime = _complementMesureTime * PAC_MAX_BEAMS;
+            }
+            /**************************************************/
+
             //提取一周数据完毕，解锁
             if (dataAvalible)
             {
+                //计算第一束时间戳
+                _pkgFirstRayTime = pkgEndStamp-(remainPointsCnt*PAC_MESURE_TIME)-_pkgScanTime;
+
                 // DBG_INFO << "Got one full pkg." << T_RESET << endl;
                 struct timespec ts;
                 timespec_get(&ts, TIME_UTC);
@@ -426,7 +490,11 @@ void LidarLinker::capLidarData()
                 pthread_mutex_unlock(&mutex);
 
                 pthread_mutex_lock(&mutex);
+
+                //清空数组 与 点计数器
                 bzero(oneCircleData, sizeof(oneCircleData));
+                pkgPointsCnt = 0;
+                
                 //重置标志
                 dataAvalible = false;
             }

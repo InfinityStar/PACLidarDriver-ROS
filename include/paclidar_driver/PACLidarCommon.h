@@ -36,6 +36,10 @@
 #define PAC_MIN_RANGE        0.05 //m
 #define PAC_MAX_BEAMS        5760
 #define PAC_ANGLE_RESOLUTION 0.0625
+#define PAC_START_BEAM       5040
+#define PAC_STOP_BEAM        3600
+
+#define PAC_MESURE_TIME      0.000028571 //second
 
 #ifndef DEGTORAD
 #define DEGTORAD(x) (x * M_PI / 180.0)

@@ -1,14 +1,3 @@
-/** ***************************************************************** 
-* 版权所有：北京光勺科技有限公司
-* 文件名：lidarlinker.h
-* 文件功能描述：连接并驱动PAC雷达的C++ Class,适用于Linux
-* 作者：Roser
-* 维护者：Roser
-* Email：roserxy@163.com
-* 时间：2020-6
-* 创建标识：Init 
-* *******************************************************************/
-
 #ifndef __LIDAR_MANAGER_H__
 #define __LIDAR_MANAGER_H__
 
@@ -20,6 +9,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <vector>
+#include "ros/ros.h"
 #include "PACLidarCommon.h"
 
 // #define __DEBUG
@@ -80,7 +70,14 @@ public:
     */
     int setupLidar(LidarProp prop,int val);
 
-    int getLidarScanData(std::vector<float>& ranges,std::vector<float>& intensities);
+    int getLidarScanData(
+                        std::vector<float>& ranges,
+                        std::vector<float>& intensities,
+                        double& startTime,
+                        double& scanTime,
+                        double& mesureTime
+        );
+        
     /** 
     * @brief 获取雷达状态，获取之前请启动雷达
     * @param state结构体
@@ -142,9 +139,11 @@ private:
 
     pthread_t dataReceiver;
 
-    PacLidar::LidarData_t sockDataPkg[PAC_NUM_OF_ONE_PKG];
-    PacLidar::LidarData_t scanDataPkg[PAC_NUM_OF_ONE_SCAN];
     PacLidar::LidarData_t oneCircleData[PAC_MAX_BEAMS];
+
+    double _pkgScanTime     = 0.0;
+    double _pkgFirstRayTime = 0.0;
+    double _complementMesureTime = 0.0;
     
     PacLidar::lidarState_t lidarStatus;
 

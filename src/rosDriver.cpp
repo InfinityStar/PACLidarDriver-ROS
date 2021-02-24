@@ -62,8 +62,8 @@ static int perDegLaserCnt = 16;
 static string frameID       = "world";
 static float rangeMin       = PAC_MIN_RANGE;
 static float rangeMax       = PAC_MAX_RANGE;
-static float angleMin       = -M_PI_2;
-static float angleMax       = M_PI*2-M_PI_2;
+static float angleMin       = -M_PI+M_PI_4;
+static float angleMax       = M_PI+M_PI_4;
 static float angleIncrement = DEGTORAD(PAC_ANGLE_RESOLUTION);
 
 static int start_angle = 0;
@@ -75,7 +75,7 @@ pthread_t svr_thread_t;
 void getAllParams(string path);
 void on_sigint_recved(int signo);
 void* ctrl_srv_advertise_func(void* node_handle);
-void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,std::vector<float>& ranges,std::vector<float>& intens);
+void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg);
 void lidarConnectionChanged(int state);
 
 int main(int argc, char **argv)
@@ -104,14 +104,12 @@ int main(int argc, char **argv)
         exit(0);
     }
     if(lm.setupLidar(LidarLinker::DATA_PROPORTION,dataProportion)<0)
-    {
-        ROS_ERROR("Failed to set DATA_PRPPORTION as :%d",dataProportion);
-    }
+        ROS_ERROR("Failed to set DATA_PROPORTION as :%d",dataProportion);
+
     lm.setupLidar(LidarLinker::SCAN_RATE,lidarSpeed);
     lm.setupLidar(LidarLinker::FILTER_LEVEL,filter_lev);
     lm.startupLidar();
-    std::vector<float> scanRans;
-    std::vector<float> scanIntes;
+    
     sensor_msgs::LaserScan scanMsg;
 
     paclidar_driver::LidarState stateMsg;
@@ -122,20 +120,23 @@ int main(int argc, char **argv)
     ros::Duration rator(0.025);
     while (ros::ok())
     {
-        double startTM = ros::Time::now().toSec();
-        lm.getLidarScanData(scanRans,scanIntes);
+        double startStamp,scanTime,incTime;
+        lm.getLidarScanData(scanMsg.ranges,scanMsg.intensities,startStamp,scanTime,incTime);
+        scanMsg.header.stamp = ros::Time().fromSec(startStamp);
+        scanMsg.scan_time = scanTime;
+        scanMsg.time_increment = incTime;
+        
+        /****Angle set***/
         for(auto i=0;i<start_angle*perDegLaserCnt;++i){
-            scanRans[i] = INFINITY;
-            scanIntes[i] = 0;
+            scanMsg.ranges[i] = INFINITY;
+            scanMsg.intensities[i] = 0;
         }
         for(auto i = end_angle*perDegLaserCnt;i<perDegLaserCnt*360;++i){
-            scanRans[i] = INFINITY;
-            scanIntes[i] = 0;
+            scanMsg.ranges[i] = INFINITY;
+            scanMsg.intensities[i] = 0;
         }
         
-        publishLaserScanMsg(scanPub,scanMsg,ros::Time::now().toSec()-startTM,scanRans,scanIntes);
-        
-        if(scanMsg.scan_time>0.5) ROS_ERROR("Scan time over than 0.5s : %f",scanMsg.scan_time);
+        publishLaserScanMsg(scanPub,scanMsg);
 
         lm.getLidarState(dev_state);
         stateMsg.firmware_version = dev_state.version;
@@ -143,9 +144,6 @@ int main(int argc, char **argv)
         stateMsg.motor_speed = dev_state.speed;
         stateMsg.serial_number = dev_state.id;
         statePub.publish(stateMsg);
-
-        scanRans.clear();
-        scanIntes.clear();
         
         rator.sleep();
     }
@@ -161,10 +159,9 @@ void on_sigint_recved(int signo)
     exit(0);
 }
 
-void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double scanTm,std::vector<float>& ranges,std::vector<float>& intens)
+void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg)
 {
     msg.header.frame_id = frameID;
-    msg.header.stamp = ros::Time::now();
 
     msg.angle_min = angleMin;
     msg.angle_max = angleMax;
@@ -173,11 +170,6 @@ void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg,double 
     msg.range_max = rangeMax;
     msg.range_min = rangeMin;
 
-    msg.ranges = ranges;
-    msg.intensities = intens;
-
-    msg.scan_time = scanTm;
-    msg.time_increment = msg.scan_time / (PAC_MAX_BEAMS/dataProportion - 1);
     pub.publish(msg);
 }
 
