@@ -17,7 +17,7 @@
         <arg name="pac_data_end_angle"    default="360" doc="The end degree data.0-360 must greater than or equal to it [pac_lidar_start_angle]" />
 
         <!-- start driver node -->
-        <node name="driver_node" pkg="paclidar_driver" type="driver_node" output="screen" required="true">
+        <node name="paclidar_driver_node" pkg="paclidar_driver" type="driver_node" output="screen" required="true">
             <param name = "pac_lidar_ip"            type = "string" value = "$(arg pac_lidar_ip)"           />
             <param name = "pac_lidar_port"          type = "int"    value = "$(arg pac_lidar_port)"         />
             <param name = "link_timeout_sec"        type = "int"    value = "$(arg link_timeout_sec)"       />
