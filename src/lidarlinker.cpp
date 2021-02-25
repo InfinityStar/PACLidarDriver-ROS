@@ -338,8 +338,8 @@ void LidarLinker::capLidarData()
         {
             bzero(index, leftNum);
 
-            int noDelay = 1;
-            setsockopt(lidarSockFD, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay));
+            int quickAck = 1;
+            setsockopt(lidarSockFD, IPPROTO_TCP, TCP_QUICKACK, &quickAck, sizeof(quickAck));
 
             recvedNum = recv(lidarSockFD, index, leftNum, 0);
             pkgEndStamp = ros::Time::now().toSec();
