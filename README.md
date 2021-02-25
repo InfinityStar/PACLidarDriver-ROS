@@ -128,7 +128,7 @@ filterLev: 3"
 | pac_angular_resolution | int      | 1             | The angle resolution of the scan data,Optinal:1 2 4,means **0.0625***1\|2\|4 |   | ✔ |
 | **Angle Clipping** |
 | pac_data_start_angle   | int      | 0             | Angle clipping start point.Range:[0-360].Note:The scan range is [start,start+scan_angle). |    | ✔ |
-| pac_data_scan_angle    | int      | 360           | The end angle of scan area |    | ✔ |
+| pac_data_scan_angle    | int      | 360           | Total scanning angle.Direction: Counterclockwise; Range:[0-360] |    | ✔ |
 
 ## Creators
 
