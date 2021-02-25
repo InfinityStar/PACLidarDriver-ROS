@@ -324,11 +324,21 @@ void LidarLinker::capLidarData()
     ssize_t recvedNum = 0;
     uint32_t buf_start_idx = 0;
     pthread_mutex_trylock(&mutex);
+    
+    //以下用于保存结余数据
     PacLidar::LidarData_t dataRemains[PAC_NUM_OF_ONE_SCAN];
     bzero(dataRemains, sizeof(dataRemains));
     size_t remainPointsCnt = 0;
-    double pkgEndStamp = 0;
+
+    //含义：当前帧(包含即将放入的)的点的数量
     int pkgPointsCnt = 0;
+
+    //含义：是否为刷新下面的时间戳; 
+    bool isFreshPkgTime = true;
+
+    //含义：数据包最后一束激光的时间戳，当接收到数据包的第一个网络包时应当刷新时刻
+    double pkgEndStamp = ros::Time::now().toSec();
+
     while (isCap)
     {
         size_t leftNum = sizeof(sockDataPkg);
@@ -342,7 +352,10 @@ void LidarLinker::capLidarData()
             setsockopt(lidarSockFD, IPPROTO_TCP, TCP_QUICKACK, &quickAck, sizeof(quickAck));
 
             recvedNum = recv(lidarSockFD, index, leftNum, 0);
-            pkgEndStamp = ros::Time::now().toSec();
+            if(isFreshPkgTime){
+                pkgEndStamp = ros::Time::now().toSec();
+                isFreshPkgTime = false;
+            }
             if (recvedNum > 0)
             {
                 /************检查包头***********/
@@ -391,6 +404,8 @@ void LidarLinker::capLidarData()
                 sockDataPkg[PAC_NUM_OF_ONE_PKG - 1].part3 == PacLidar::LIDAR_DATA_TAIL_T.part3)
                 pkgTl = true;
             pkgPointsCnt += 1000;
+            //下一个网络包为下一个数据包的第一个网络包，将此变量设置为true
+            isFreshPkgTime = true;
         }
         /***********************************/
 
@@ -481,7 +496,7 @@ void LidarLinker::capLidarData()
             if (dataAvalible)
             {
                 //计算第一束时间戳
-                _pkgFirstRayTime = pkgEndStamp-(remainPointsCnt*PAC_MESURE_TIME)-_pkgScanTime;
+                _pkgFirstRayTime = pkgEndStamp-(remainPointsCnt*PAC_MESURE_TIME)-_pkgScanTime-PAC_HW_CONSUME_TIME;
 
                 // DBG_INFO << "Got one full pkg." << T_RESET << endl;
                 struct timespec ts;

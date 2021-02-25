@@ -142,9 +142,9 @@ private:
 
     PacLidar::LidarData_t oneCircleData[PAC_MAX_BEAMS];
 
-    double _pkgScanTime     = 0.0;
-    double _pkgFirstRayTime = 0.0;
-    double _complementMesureTime = 0.0;
+    volatile double _pkgScanTime     = 0.0;
+    volatile double _pkgFirstRayTime = 0.0;
+    volatile double _complementMesureTime = 0.0;
     
     PacLidar::lidarState_t lidarStatus;
 

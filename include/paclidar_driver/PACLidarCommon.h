@@ -39,7 +39,10 @@
 #define PAC_START_BEAM       5040
 #define PAC_STOP_BEAM        3600
 
-#define PAC_MESURE_TIME      0.000028571 //second
+//raw点测量时间间隔
+#define PAC_MESURE_TIME      0.000028571 //second = 28.571us
+//硬件数据包发送损耗时间
+#define PAC_HW_CONSUME_TIME  0.0013      //second = 1.3ms
 
 #ifndef DEGTORAD
 #define DEGTORAD(x) (x * M_PI / 180.0)
