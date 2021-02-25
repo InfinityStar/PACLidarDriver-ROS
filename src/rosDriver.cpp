@@ -126,7 +126,7 @@ int main(int argc, char **argv)
         scanMsg.scan_time = scanTime;
         scanMsg.time_increment = incTime;
 
-        /****Angle split***/
+        /****Angle Clipping***/
         if (scan_angle < 360) {
             auto fixStartAngle = start_angle + 45;//原始数组下标0为 -45度数据，以此矫正
             decltype(scanMsg.ranges) splitRanges(scanMsg.ranges.size(),INFINITY);
@@ -135,8 +135,8 @@ int main(int argc, char **argv)
             auto beamsCnt = scan_angle*perDegLaserCnt;            
             for (auto i = 0,idx = fixStartAngle*perDegLaserCnt; i < beamsCnt; ++i,++idx)
             {
-                if(idx>splitRanges.size())
-                    idx = 0;
+                if(idx >= splitRanges.size())
+                    idx %= splitRanges.size();
                 
                 splitRanges[idx] = scanMsg.ranges[idx];
                 splitIntens[idx] = scanMsg.intensities[idx];
