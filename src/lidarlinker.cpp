@@ -20,7 +20,7 @@ LidarLinker::LidarLinker(string ip, uint16_t port, string name):
     rcvtimeout.tv_usec = 0;
     setsockopt(lidarSockFD, SOL_SOCKET, SO_RCVTIMEO, &rcvtimeout, sizeof(rcvtimeout));
 
-    int quickAck = 1;
+    int quickAck = enableQuickAck;
     setsockopt(lidarSockFD, IPPROTO_TCP, TCP_QUICKACK, &quickAck, sizeof(quickAck));
 
     bzero(lidarSockAddr, sizeof(struct sockaddr_in));
@@ -223,6 +223,9 @@ int LidarLinker::setupLidar(LidarProp prop,int val)
         if(val!=1 && val!=2 && val!=4) return -1;
         _dtPropr = val;
     }
+    else if(prop == LidarProp::TCP_QUICK_ACK){
+        enableQuickAck = val;
+    }
 
     return 0;
 }
@@ -348,7 +351,7 @@ void LidarLinker::capLidarData()
         {
             bzero(index, leftNum);
 
-            int quickAck = 1;
+            int quickAck = enableQuickAck;
             setsockopt(lidarSockFD, IPPROTO_TCP, TCP_QUICKACK, &quickAck, sizeof(quickAck));
 
             recvedNum = recv(lidarSockFD, index, leftNum, 0);

@@ -4,6 +4,7 @@
         <arg name="pac_lidar_ip"          default="192.168.1.199" />
         <arg name="pac_lidar_port"        default="5000"          />
         <arg name="link_timeout_sec"      default="10" doc="Connection second timeout" />
+        <arg name="tcp_quick_ack"         default="true" doc="Whether to enable QuickAck to avoid delayed ack" />
         <!-- Lidar Setting -->
         <arg name="pac_lidar_speed"       default="10"    doc="Scan Rate 10 15 20 hz" />
         <arg name="pac_lidar_filter_lev"  default="3"  doc="Filtering level(0-6)" />
@@ -27,6 +28,7 @@
             <param name = "pac_lidar_ip"            type = "string" value = "$(arg pac_lidar_ip)"           />
             <param name = "pac_lidar_port"          type = "int"    value = "$(arg pac_lidar_port)"         />
             <param name = "link_timeout_sec"        type = "int"    value = "$(arg link_timeout_sec)"       />
+            <param name = "tcp_quick_ack"           type = "bool"   value = "$(arg tcp_quick_ack)"       />
             <param name = "pac_lidar_speed"         type = "int"    value = "$(arg pac_lidar_speed)"        />
             <param name = "pac_lidar_filter_lev"    type = "int"    value = "$(arg pac_lidar_filter_lev)"   />
             <param name = "pac_lidar_scan_topic"    type = "string" value = "$(arg pac_lidar_scan_topic)"   />

@@ -62,6 +62,7 @@ public:
         SCAN_RATE,
         FILTER_LEVEL,
         DATA_PROPORTION,
+        TCP_QUICK_ACK,
     };
     /**
     * @brief 设置参数，如果线程在运行，则向雷达发送修改参数指令，
@@ -159,6 +160,8 @@ private:
     volatile bool isCap;
 
     volatile int _dtPropr;
+
+    volatile int enableQuickAck = false;
 
     pthread_mutex_t mutex;
     pthread_mutexattr_t mutexattr;

@@ -54,6 +54,8 @@ static string ctrlSrvName  = "pac_lidar_ctrl";
 static string lidarIP = "192.168.1.199";
 static int lidarPort  = 5000;
 static int linkTimeout = 10;
+static bool tcpQuickAck = false;
+
 static int lidarSpeed = 10;
 static int filter_lev = 3;
 static int dataProportion = 1;
@@ -105,6 +107,8 @@ int main(int argc, char **argv)
     }
     if(lm.setupLidar(LidarLinker::DATA_PROPORTION,dataProportion)<0)
         ROS_ERROR("Failed to set DATA_PROPORTION as :%d",dataProportion);
+
+    lm.setupLidar(LidarLinker::TCP_QUICK_ACK,tcpQuickAck);
 
     lm.setupLidar(LidarLinker::SCAN_RATE,lidarSpeed);
     lm.setupLidar(LidarLinker::FILTER_LEVEL,filter_lev);
@@ -215,6 +219,11 @@ void getAllParams(string path)
     ret = ros::param::get(path + key, linkTimeout);
     if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),linkTimeout);
     else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),linkTimeout);
+
+    key = "tcp_quick_ack";
+    ret = ros::param::get(path + key, tcpQuickAck);
+    if(ret) ROS_INFO("Got paramter %s : %s",key.c_str(),tcpQuickAck?"True":"False");
+    else ROS_WARN("Can't get the paramter, using default %s : %s",key.c_str(),tcpQuickAck?"True":"False");
 
     key = "pac_lidar_speed";
     ret = ros::param::get(path + key, lidarSpeed);
