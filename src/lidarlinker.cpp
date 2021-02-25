@@ -20,6 +20,9 @@ LidarLinker::LidarLinker(string ip, uint16_t port, string name):
     rcvtimeout.tv_usec = 0;
     setsockopt(lidarSockFD, SOL_SOCKET, SO_RCVTIMEO, &rcvtimeout, sizeof(rcvtimeout));
 
+    int quickAck = 1;
+    setsockopt(lidarSockFD, IPPROTO_TCP, TCP_QUICKACK, &quickAck, sizeof(quickAck));
+
     bzero(lidarSockAddr, sizeof(struct sockaddr_in));
     lidarSockAddr->sin_family = AF_INET;
     lidarSockAddr->sin_addr.s_addr = inet_addr(ip.c_str());
@@ -334,6 +337,9 @@ void LidarLinker::capLidarData()
         while (leftNum > 0)
         {
             bzero(index, leftNum);
+
+            int noDelay = 1;
+            setsockopt(lidarSockFD, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay));
 
             recvedNum = recv(lidarSockFD, index, leftNum, 0);
             pkgEndStamp = ros::Time::now().toSec();
