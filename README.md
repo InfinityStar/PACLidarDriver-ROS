@@ -109,20 +109,26 @@ filterLev: 3"
 
 | Parameter Name         | Type     | Default       | Information | Required | Passed |
 | -------------          | ------   |-------        | ----------- | -------- | ------ |
+| **Network Setting** |
 | pac_lidar_ip           | String   | 192.168.1.199 | Lidar IP address.                                 | ✔ | ✔ |
 | pac_lidar_port         | Integer  | 5000          | Lidar TCP port.                                   | ✔ | ✔ |
 | link_timeout_sec       | Integer  | 10            | Lidar TCP connection timeout(*second*).           |   | ✔ |
+| **Lidar Setting** |
 | pac_lidar_speed        | Integer  | 10            | Lidar scan speed.Optional field: 10 15 20 25 30.  |   | ✔ |
 | pac_lidar_filter_lev   | Integer  | 3             | Filtering level. Min:0(*none*) Max:6.             |   | ✔ |
+| **Communication Setting** |
 | pac_lidar_scan_topic   | String   | /scan         | The topic name of scan data.                      |   | ✔ |
 | pac_lidar_state_topic  | String   | pacLidar_state | The topic name of the lidar state.               |   | ✔ |
 | pac_lidar_ctrl_srv     | String   | pacLidar_ctrl | The service name of the lidar confguration        |   | ✔ |
 | pac_lidar_frame_id     | String   | paclidar_link | The frame name of the lidar message               |   | ✔ |
+| **Distace Limiting** |
 | pac_lidar_range_min    | Double   | 0.00          | The scan data of the min range                    |   | ✔ |
 | pac_lidar_range_max    | Double   | 60.0          | The scan data of the max range                    |   | ✔ |
+| **Resolution Setting** |
 | pac_angular_resolution | int      | 1             | The angle resolution of the scan data,Optinal:1 2 4,means **0.0625***1\|2\|4 |   | ✔ |
-| pac_data_start_angle   | int      | 0             | The start angle of scan area.Scan area args use to split data as you want[start,end) |    | ✔ |
-| pac_data_end_angle     | int      | 360           | The end angle of scan area |    | ✔ |
+| **Angle Clipping** |
+| pac_data_start_angle   | int      | 0             | Angle clipping start point.Range:[0-360].Note:The scan range is [start,start+scan_angle). |    | ✔ |
+| pac_data_scan_angle    | int      | 360           | The end angle of scan area |    | ✔ |
 
 ## Creators
 
