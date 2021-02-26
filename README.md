@@ -113,6 +113,7 @@ filterLev: 3"
 | pac_lidar_ip           | String   | 192.168.1.199 | Lidar IP address.                                 | ✔ | ✔ |
 | pac_lidar_port         | Integer  | 5000          | Lidar TCP port.                                   | ✔ | ✔ |
 | link_timeout_sec       | Integer  | 10            | Lidar TCP connection timeout(*second*).           |   | ✔ |
+| tcp_quick_ack          | bool     | False         | Whether to enable QuickAck to avoid delayed ack.  |   | ✔ |
 | **Lidar Setting** |
 | pac_lidar_speed        | Integer  | 10            | Lidar scan speed.Optional field: 10 15 20 25 30.  |   | ✔ |
 | pac_lidar_filter_lev   | Integer  | 3             | Filtering level. Min:0(*none*) Max:6.             |   | ✔ |
