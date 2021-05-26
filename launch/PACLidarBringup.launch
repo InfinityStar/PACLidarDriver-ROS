@@ -5,20 +5,30 @@
         <arg name="pac_lidar_port"        default="5000"          />
         <arg name="link_timeout_sec"      default="10" doc="Connection second timeout" />
         <arg name="tcp_quick_ack"         default="true" doc="Whether to enable QuickAck to avoid delayed ack" />
+
         <!-- Lidar Setting -->
         <arg name="pac_lidar_speed"       default="10"    doc="Scan Rate 10 15 20 hz" />
         <arg name="pac_lidar_filter_lev"  default="3"  doc="Filtering level(0-6)" />
+
         <!-- Communication settings -->
         <arg name="pac_lidar_scan_topic"  default="/scan"         />
         <arg name="pac_lidar_state_topic" default="pacLidar_state" />
         <arg name="pac_lidar_ctrl_srv"    default="pacLidar_ctrl"  />
         <arg name="pac_lidar_frame_id"    default="paclidar_link" /> 
         <arg name="base_frame_id"         default="base_link"     />
+        
         <!-- Distace Limiting -->
         <arg name="pac_lidar_range_min"   default="0.00"          />
         <arg name="pac_lidar_range_max"   default="60.0"          />
+        
+        <!-- Intensity Value Mapping -->  
+        <!-- Real Intensity Maximum(eg.255.0) = pac_intensity_max(eg.8160)/pac_intensity_factor(eg.32) -->
+        <arg name="pac_lidar_intensity_max"       default="8160"    doc="All numbers greater than this value are assigned to this value"/>
+        <arg name="pac_lidar_intensity_factor"    default="32"        doc="must greater than 0"/>
+        
         <!-- Resolution Setting -->
         <arg name="pac_angular_resolution" default="1" doc="1 2 4,means 0.625/0.125/0.25 resolution"/>
+        
         <!-- Angle clipping -->
         <arg name="pac_data_start_angle"  default="0" doc="Angle clipping start point.Range:[0-360].Note:The scan range is [start,start+scan_angle)." />
         <arg name="pac_data_scan_angle"   default="360" doc="Total scanning angle.Direction: Counterclockwise; Range:[0-360]" />
@@ -37,6 +47,8 @@
             <param name = "pac_lidar_frame_id"      type = "string" value = "$(arg pac_lidar_frame_id)"     />
             <param name = "pac_lidar_range_min"     type = "double" value = "$(arg pac_lidar_range_min)"    />
             <param name = "pac_lidar_range_max"     type = "double" value = "$(arg pac_lidar_range_max)"    />
+            <param name = "pac_lidar_intensity_max"        type = "int" value = "$(arg pac_lidar_intensity_max)"    />
+            <param name = "pac_lidar_intensity_factor"     type = "int" value = "$(arg pac_lidar_intensity_factor)"    />
             <param name = "pac_angular_resolution"  type = "int"    value = "$(arg pac_angular_resolution)" />
             <param name = "pac_data_start_angle"    type = "int"    value = "$(arg pac_data_start_angle)"   />
             <param name="pac_data_scan_angle"       type = "int"    value = "$(arg pac_data_scan_angle)"    />

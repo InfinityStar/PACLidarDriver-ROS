@@ -71,12 +71,16 @@ static float angleIncrement = DEGTORAD(PAC_ANGLE_RESOLUTION);
 static int start_angle = 0;
 static int scan_angle = 360;
 
+static int intensityMax = 8160;
+static int intensityFactor = 32;
+
 LidarLinker *lm_ptr = nullptr;
 pthread_t svr_thread_t;
 
 void getAllParams(string path);
 void on_sigint_recved(int signo);
 void* ctrl_srv_advertise_func(void* node_handle);
+void processIntensities(sensor_msgs::LaserScan& msg);
 void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg);
 void lidarConnectionChanged(int state);
 
@@ -150,6 +154,7 @@ int main(int argc, char **argv)
             scanMsg.intensities = splitIntens;
         }
 
+        processIntensities(scanMsg);
         publishLaserScanMsg(scanPub,scanMsg);
 
         lm.getLidarState(dev_state);
@@ -171,6 +176,15 @@ void on_sigint_recved(int signo)
     ros::shutdown();
     if(lm_ptr!=nullptr) lm_ptr->disconnectFromLidar();
     exit(0);
+}
+
+void processIntensities(sensor_msgs::LaserScan& msg)
+{
+    for(auto i = msg.intensities.begin(); i < msg.intensities.end(); ++i){
+        if(*i > intensityMax)
+            *i = intensityMax;
+        *i = *i / intensityFactor;
+    }
 }
 
 void publishLaserScanMsg(ros::Publisher &pub,sensor_msgs::LaserScan& msg)
@@ -249,6 +263,16 @@ void getAllParams(string path)
     ret = ros::param::get(path + key, rangeMax);
     if(ret) ROS_INFO("Got paramter %s : %0.2f",key.c_str(),rangeMax);
     else ROS_WARN("Can't get the paramter, using default %s : %0.2f",key.c_str(),rangeMax);
+
+    key = "pac_lidar_intensity_max";
+    ret = ros::param::get(path + key, intensityMax);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),intensityMax);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),intensityMax);
+
+    key = "pac_lidar_intensity_factor";
+    ret = ros::param::get(path + key, intensityFactor);
+    if(ret) ROS_INFO("Got paramter %s : %d",key.c_str(),intensityFactor);
+    else ROS_WARN("Can't get the paramter, using default %s : %d",key.c_str(),intensityFactor);
 
     key = "pac_angular_resolution";
     ret = ros::param::get(path + key, dataProportion);

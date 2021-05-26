@@ -125,11 +125,14 @@ filterLev: 3"
 | **Distace Limiting** |
 | pac_lidar_range_min    | Double   | 0.00          | The scan data of the min range                    |   | ✔ |
 | pac_lidar_range_max    | Double   | 60.0          | The scan data of the max range                    |   | ✔ |
+| **Intensity Value Mapping** |     |   | Real Intensity Maximum(eg.255.0) = pac_intensity_max(eg.8160)/pac_intensity_factor(eg.32) |
+| pac_lidar_intensity_max    | int   | 8160          | All numbers greater than this value are assigned to this value |   | ✔ |
+| pac_lidar_range_max    | int   | 32          | must greater than 0                    |   | ✔ |
 | **Resolution Setting** |
 | pac_angular_resolution | int      | 1             | The angle resolution of the scan data,Optinal:1 2 4,means **0.0625***1\|2\|4 |   | ✔ |
-| **Angle Clipping** |
-| pac_data_start_angle   | int      | 0             | Angle clipping start point.Range:[0-360].Note:The scan range is [start,start+scan_angle). |    | ✔ |
-| pac_data_scan_angle    | int      | 360           | Total scanning angle.Direction: Counterclockwise; Range:[0-360] |    | ✔ |
+| **Angle Clipping** |  |   | Clipping the scan range to [start,start+scan_angle);  Direction: Counterclockwise;|
+| pac_data_start_angle   | int      | 0             | Angle clipping start point.Range:[0-360] |    | ✔ |
+| pac_data_scan_angle    | int      | 360           | Total scanning angle. Range:[0-360] |    | ✔ |
 
 ## Creators
 
