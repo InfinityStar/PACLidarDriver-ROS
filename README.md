@@ -127,7 +127,7 @@ filterLev: 3"
 | pac_lidar_range_max    | Double   | 60.0          | The scan data of the max range                    |   | ✔ |
 | **Intensity Value Mapping** |     |   | Real Intensity Maximum(eg.255.0) = pac_intensity_max(eg.8160)/pac_intensity_factor(eg.32) |
 | pac_lidar_intensity_max    | int   | 8160          | All numbers greater than this value are assigned to this value |   | ✔ |
-| pac_lidar_range_max    | int   | 32          | must greater than 0                    |   | ✔ |
+| pac_lidar_intensity_factor    | int   | 32          | must greater than 0                    |   | ✔ |
 | **Resolution Setting** |
 | pac_angular_resolution | int      | 1             | The angle resolution of the scan data,Optinal:1 2 4,means **0.0625***1\|2\|4 |   | ✔ |
 | **Angle Clipping** |  |   | Clipping the scan range to [start,start+scan_angle);  Direction: Counterclockwise;|
