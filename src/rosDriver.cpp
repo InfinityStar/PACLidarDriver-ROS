@@ -86,15 +86,14 @@ void lidarConnectionChanged(int state);
 
 int main(int argc, char **argv)
 {
-
-    signal(SIGINT,  on_sigint_recved);
-    signal(SIGQUIT, on_sigint_recved);
-    signal(SIGTERM, on_sigint_recved);
-
     ros::init(argc,argv,"paclidar");
     ros::NodeHandle ros_nh;
     nodeFullName = ros::this_node::getName()+"/";
     getAllParams(nodeFullName);
+
+    signal(SIGINT,  on_sigint_recved);
+    signal(SIGQUIT, on_sigint_recved);
+    signal(SIGTERM, on_sigint_recved);
 
     LidarLinker lm(lidarIP,lidarPort,ros::this_node::getName());
     lm_ptr = &lm;
